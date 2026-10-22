@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1b6b4a">
+<title>LMS Pesantren</title>
+<style>
+:root{--bg:#f6f3ea;--card:#fff;--ink:#1f2a24;--mute:#66736b;--pri:#1b6b4a;--on:#fff;--pri2:#e3f1e9;--bad:#b3261e;--ok:#1b7a3d;--line:#e2ddcf;--r:16px}
+@media (prefers-color-scheme:dark){:root{--bg:#121815;--card:#1b2420;--ink:#eaf0ec;--mute:#9aaaa1;--pri:#4fb888;--on:#0d1a13;--pri2:#1e3329;--bad:#ff8a80;--ok:#6fdc8f;--line:#2b3731}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+h1,h2,h3{line-height:1.25}
+.muted{color:var(--mute)}
+.top{position:sticky;top:0;z-index:20;background:var(--pri);color:var(--on);padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px}
+.top h1{font-size:1.05rem;margin:0;flex:1;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .who{font-size:.8rem;opacity:.85;max-width:30vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrap{max-width:980px;margin:0 auto;padding:16px 16px 80px}
+.h{margin:.2em 0 .3em;font-size:1.4rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.card.err{border-color:var(--bad);color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:14px}
+.tile{display:flex;flex-direction:column;justify-content:space-between;gap:8px;padding:16px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);border-left:6px solid var(--c,var(--pri));text-decoration:none;color:inherit;min-height:96px}
+.tile b{font-size:1.08rem}
+.badge{display:inline-block;font-size:.78rem;padding:2px 10px;border-radius:99px;background:var(--pri2);color:var(--pri);width:max-content}
+.btn{appearance:none;border:1.5px solid var(--pri);background:var(--pri);color:var(--on);border-radius:12px;padding:10px 18px;font:inherit;font-weight:600;cursor:pointer;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--pri)}
+.btn.danger{background:transparent;color:var(--bad);border-color:var(--bad)}
+.btn.sm{padding:4px 12px;min-height:36px;font-size:.9rem;border-radius:10px}
+.btn[disabled]{opacity:.45;cursor:default}
+.top .btn{background:transparent;color:var(--on);border-color:rgba(255,255,255,.55)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;margin:6px 0}
+.chip{white-space:nowrap;padding:6px 14px;border-radius:99px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer;text-decoration:none}
+.chip.on{background:var(--pri);color:var(--on);border-color:var(--pri)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;align-items:center}
+.row.between{justify-content:space-between}
+.back{display:inline-block;margin-bottom:6px;color:var(--pri);text-decoration:none;font-weight:600}
+.item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);margin:8px 0;text-decoration:none;color:inherit}
+.item .grow{flex:1;min-width:0}
+.item .grow b{overflow-wrap:anywhere}
+.num{flex:none;width:36px;height:36px;border-radius:10px;background:var(--pri2);display:grid;place-items:center;font-weight:700;color:var(--pri)}
+.viewer{position:relative;aspect-ratio:16/9;background:#000;border-radius:var(--r);overflow:hidden}
+.viewer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.xbtn{display:none;position:absolute;left:8px;bottom:8px;z-index:3}
+.full{position:fixed!important;inset:0;z-index:60;border-radius:0!important;aspect-ratio:auto!important;max-width:none!important;margin:0!important}
+.full .xbtn{display:inline-flex}
+.runner.full{overflow:auto;padding:24px;background:var(--card)}
+.rbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;color:var(--mute);font-size:.9rem}
+.prog{height:8px;border-radius:99px;background:var(--pri2);overflow:hidden;margin:6px 0 16px}
+.prog i{display:block;height:100%;background:var(--pri);transition:width .3s}
+.q{font-size:1.25rem;font-weight:600;margin:6px 0 14px;overflow-wrap:anywhere}
+.opt{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:14px 16px;margin:8px 0;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
+.opt .l{flex:none;width:32px;height:32px;border-radius:50%;background:var(--pri2);color:var(--pri);display:grid;place-items:center;font-weight:700}
+.opt.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,transparent)}
+.opt.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 16%,transparent)}
+.fb{margin:14px 0;padding:12px 14px;border-radius:12px;background:var(--pri2)}
+.fb.ok{background:color-mix(in srgb,var(--ok) 16%,transparent)}
+.fb.no{background:color-mix(in srgb,var(--bad) 16%,transparent)}
+.pemb{margin-top:6px;color:var(--ink)}
+.pres .q{font-size:clamp(1.5rem,4.2vw,2.8rem)}
+.pres .opt{font-size:clamp(1.15rem,2.8vw,2rem);padding:18px 22px;cursor:default}
+.pres .opt .l{width:44px;height:44px;font-size:1.3rem}
+.pres .fb{font-size:clamp(1.05rem,2.4vw,1.7rem)}
+.center{text-align:center;padding:20px 0}
+.score{font-size:3rem;font-weight:800;color:var(--pri)}
+.fld{display:grid;gap:4px;margin:10px 0}
+.fld label{font-weight:600;font-size:.92rem}
+.fld small{color:var(--mute)}
+input,select,textarea{font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);width:100%}
+input[type=checkbox]{width:auto}
+.chk{display:flex;gap:8px;align-items:center;font-weight:400!important}
+dialog{border:0;border-radius:var(--r);padding:20px;width:min(560px,94vw);max-height:92vh;background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog h3{margin-top:0}
+.end{justify-content:flex-end}
+.login{min-height:100vh;display:grid;place-items:center;padding:16px}
+.login .card{width:min(400px,100%);text-align:center}
+.login .fld{text-align:left}
+.logo{font-size:3rem}
+.loader{padding:40px;text-align:center;color:var(--mute)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:#222;color:#fff;padding:10px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:100;max-width:90vw}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+@media (max-width:520px){.top .who{display:none}.h{font-size:1.25rem}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status"></div>
+
+<script>
+// ====== PENGATURAN: tempel URL Web App Google Apps Script di sini ======
+const API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
+// ========================================================================
+
+const COLORS = ['#1b6b4a', '#c9962b', '#2d6fa3', '#8a4f9e', '#b5543c', '#3d8b8b'];
+const TIPE_LABEL = { slide: ['🖼️', 'Slide'], video: ['🎬', 'Video'], dokumen: ['📄', 'Dokumen'] };
+const SOAL_LABEL = { pg: 'Pilihan ganda', bs: 'Benar / Salah', isian: 'Isian singkat' };
+
+const S = { token: ls('get', 'lms_token'), user: null, kelasFilter: '', adm: {} };
+let R = null; // state latihan
+
+function ls(op, k, v) {
+  try {
+    if (op === 'get') return localStorage.getItem(k);
+    if (op === 'set') localStorage.setItem(k, v);
+    if (op === 'del') localStorage.removeItem(k);
+  } catch (e) {}
+  return null;
+}
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nl2br = s => String(s).replace(/\n/g, '<br>');
+const norm = s => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+const isStaff = () => S.user && S.user.role !== 'santri';
+const isAdmin = () => S.user && S.user.role === 'admin';
+const loader = '<div class="loader">Memuat…</div>';
+const colorFor = s => COLORS[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+
+let toastT;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2800);
+}
+
+async function api(action, params = {}) {
+  if (!API_URL || API_URL.startsWith('GANTI')) throw new Error('API_URL belum diisi di index.html');
+  let r;
+  try {
+    r = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action, token: S.token }, params))
+    });
+  } catch (e) { throw new Error('Tidak bisa terhubung ke server. Periksa koneksi internet.'); }
+  let j;
+  try { j = await r.json(); } catch (e) { throw new Error('Respon server tidak valid. Periksa deploy Web App (akses: Anyone).'); }
+  if (!j.ok) {
+    if (j.error === 'SESI_HABIS') { doLogout(true); throw new Error('Sesi habis, silakan login lagi.'); }
+    throw new Error(j.error);
+  }
+  return j.data;
+}
+
+// ---------- Embed URL ----------
+function embedUrl(u) {
+  u = String(u || '').trim();
+  if (!/^https:\/\//i.test(u)) return '';
+  let m;
+  if ((m = u.match(/docs\.google\.com\/presentation\/d\/([\w-]+)/))) return `https://docs.google.com/presentation/d/${m[1]}/embed?start=false&loop=false&delayms=3000`;
+  if ((m = u.match(/docs\.google\.com\/(document|spreadsheets)\/d\/([\w-]+)/))) return `https://docs.google.com/${m[1]}/d/${m[2]}/preview`;
+  if ((m = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/))) return `https://drive.google.com/file/d/${m[1]}/preview`;
+  if ((m = u.match(/drive\.google\.com\/open\?id=([\w-]+)/))) return `https://drive.google.com/file/d/${m[1]}/preview`;
+  if ((m = u.match(/(?:youtube\.com\/watch\?(?:.*&)?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([\w-]{11})/))) return `https://www.youtube.com/embed/${m[1]}?rel=0`;
+  return u;
+}
+
+// ---------- Auth ----------
+function renderLogin(msg) {
+  $('#app').innerHTML = `<div class="login"><div class="card">
+    <div class="logo">📚</div><h1>LMS Pesantren</h1>
+    <p class="muted">Masuk untuk membuka materi pelajaran</p>
+    ${msg ? `<p style="color:var(--bad)">${esc(msg)}</p>` : ''}
+    <form data-form="login">
+      <div class="fld"><label>Username / NIS</label><input name="username" autocomplete="username" autocapitalize="none" required></div>
+      <div class="fld"><label>PIN</label><input name="pin" type="password" autocomplete="current-password" required></div>
+      <button class="btn" style="width:100%;margin-top:8px">Masuk</button>
+    </form></div></div>`;
+}
+
+async function doLogin(f) {
+  const btn = f.querySelector('button'); btn.disabled = true;
+  try {
+    const d = await api('login', { username: f.username.value, pin: f.pin.value });
+    S.token = d.token; S.user = d.user; ls('set', 'lms_token', d.token);
+    location.hash = '#/'; route();
+  } catch (e) { renderLogin(e.message); }
+}
+
+function doLogout(expired) {
+  if (S.token && !expired) api('logout').catch(() => {});
+  S.token = null; S.user = null; ls('del', 'lms_token');
+  renderLogin(expired ? 'Sesi habis, silakan login lagi.' : '');
+}
+
+// ---------- Router ----------
+function shell() {
+  if ($('#main')) return;
+  $('#app').innerHTML = `<header class="top">
+    <h1 data-act="home">📚 LMS Pesantren</h1><span class="who">${esc(S.user.nama)}</span>
+    <button class="btn sm" data-act="home" aria-label="Beranda">🏠</button>
+    ${isStaff() ? '<button class="btn sm" data-act="admin" aria-label="Kelola">⚙️</button>' : ''}
+    <button class="btn sm" data-act="pin" aria-label="Ganti PIN">🔑</button>
+    <button class="btn sm" data-act="logout">Keluar</button>
+  </header><main class="wrap" id="main"></main>`;
+}
+
+async function route() {
+  if (!S.user) return renderLogin();
+  shell();
+  const main = $('#main');
+  const [, page, a, b] = location.hash.split('/');
+  if (page !== 'latihan') R = null;
+  main.innerHTML = loader;
+  window.scrollTo(0, 0);
+  try {
+    if (page === 'mapel') await viewMapel(main, a);
+    else if (page === 'materi') await viewMateri(main, a, b);
+    else if (page === 'latihan') await viewLatihan(main, a, b);
+    else if (page === 'kelola' && isStaff()) await viewAdmin(main, a || 'mapel');
+    else await viewHome(main);
+  } catch (e) { main.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+}
+window.addEventListener('hashchange', route);
+
+// ---------- Beranda ----------
+async function viewHome(main) {
+  const mapel = await api('mapelList');
+  const kelas = [...new Set(mapel.map(m => m.kelas || 'Semua'))].sort();
+  const draw = () => {
+    const list = mapel.filter(m => !S.kelasFilter || (m.kelas || 'Semua') === S.kelasFilter);
+    main.innerHTML = `<h2 class="h">Assalamu'alaikum, ${esc(S.user.nama)}</h2>
+      <p class="muted">${isStaff() ? 'Pilih mata pelajaran untuk mengajar.' : 'Pilih mata pelajaran untuk mulai belajar.'}</p>
+      ${isStaff() && kelas.length > 1 ? `<div class="chips"><button class="chip ${!S.kelasFilter ? 'on' : ''}" data-act="kelasfilter" data-v="">Semua</button>${kelas.map(k => `<button class="chip ${S.kelasFilter === k ? 'on' : ''}" data-act="kelasfilter" data-v="${esc(k)}">${esc(k)}</button>`).join('')}</div>` : ''}
+      ${list.length ? `<div class="grid">${list.map(m => `<a class="tile" style="--c:${colorFor(m.nama)}" href="#/mapel/${esc(m.id)}"><b>${esc(m.nama)}</b><span class="badge">${esc(m.kelas || 'Semua kelas')}</span></a>`).join('')}</div>`
+        : `<div class="card muted" style="margin-top:14px">Belum ada mata pelajaran${isStaff() ? '. Tambahkan di menu ⚙️ Kelola.' : '.'}</div>`}`;
+  };
+  window._drawHome = draw; draw();
+}
+
+// ---------- Daftar materi ----------
+async function viewMapel(main, id) {
+  const [mapel, materi] = await Promise.all([api('mapelList'), api('materiList', { mapelId: id })]);
+  const mp = mapel.find(x => x.id === id);
+  if (!mp) throw new Error('Mata pelajaran tidak ditemukan');
+  main.innerHTML = `<a class="back" href="#/">← Beranda</a>
+    <h2 class="h">${esc(mp.nama)}</h2><span class="badge">${esc(mp.kelas || 'Semua kelas')}</span>
+    <div style="margin-top:12px">${materi.length ? materi.map((m, i) => {
+      const t = TIPE_LABEL[m.tipe] || TIPE_LABEL.dokumen;
+      return `<a class="item" href="#/materi/${esc(id)}/${esc(m.id)}"><span class="num">${i + 1}</span><span class="grow"><b>${esc(m.judul)}</b><br><small class="muted">${t[0]} ${t[1]}${m.aktif ? '' : ' • nonaktif'}</small></span><span aria-hidden="true">›</span></a>`;
+    }).join('') : '<div class="card muted">Belum ada materi.</div>'}</div>`;
+}
+
+// ---------- Materi ----------
+async function viewMateri(main, mapelId, materiId) {
+  const list = await api('materiList', { mapelId });
+  const idx = list.findIndex(x => x.id === materiId);
+  if (idx < 0) throw new Error('Materi tidak ditemukan');
+  const m = list[idx], src = embedUrl(m.url);
+  const prev = list[idx - 1], next = list[idx + 1];
+  main.innerHTML = `<a class="back" href="#/mapel/${esc(mapelId)}">← Daftar materi</a>
+    <h2 class="h">${esc(m.judul)}</h2>
+    ${src ? `<div class="viewer" id="viewer"><iframe src="${esc(src)}" allow="autoplay; fullscreen" allowfullscreen loading="lazy"></iframe><button class="btn sm xbtn" data-act="full" data-target="viewer">✕ Tutup layar penuh</button></div>`
+      : '<div class="card err">Link materi tidak valid.</div>'}
+    <div class="row">
+      <button class="btn ghost" data-act="full" data-target="viewer">⛶ Layar penuh</button>
+      <a class="btn" href="#/latihan/${esc(mapelId)}/${esc(materiId)}">✍️ Latihan</a>
+      <a class="btn ghost sm" href="${esc(m.url)}" target="_blank" rel="noopener">Buka di tab baru</a>
+    </div>
+    <div class="row between">
+      ${prev ? `<a class="btn ghost sm" href="#/materi/${esc(mapelId)}/${esc(prev.id)}">◀ ${esc(prev.judul)}</a>` : '<span></span>'}
+      ${next ? `<a class="btn ghost sm" href="#/materi/${esc(mapelId)}/${esc(next.id)}">${esc(next.judul)} ▶</a>` : ''}
+    </div>`;
+}
+
+function toggleFull(el) {
+  if (!el) return;
+  if (el.classList.contains('full')) { exitFull(el); return; }
+  el.classList.add('full');
+  try { const p = el.requestFullscreen && el.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+}
+function exitFull(el) {
+  el.classList.remove('full');
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) document.querySelectorAll('.full').forEach(x => x.classList.remove('full'));
+});
+
+// ---------- Latihan ----------
+async function viewLatihan(main, mapelId, materiId) {
+  const [items, list] = await Promise.all([api('latihanList', { materiId }), api('materiList', { mapelId })]);
+  const mat = list.find(x => x.id === materiId);
+  R = { items, i: 0, score: 0, pres: isStaff(), answered: false, shown: false, ok: false, pick: null, text: '', done: false, mapelId, materiId, mat };
+  main.innerHTML = `<a class="back" href="#/materi/${esc(mapelId)}/${esc(materiId)}">← Kembali ke materi</a>
+    <div id="runner" class="card runner ${R.pres ? 'pres' : ''}"></div>`;
+  drawRunner();
+}
+
+function qInfo(q) {
+  const opts = q.tipe === 'bs' ? ['Benar', 'Salah'] : q.tipe === 'pg' ? String(q.opsi || '').split('\n').map(s => s.trim()).filter(Boolean) : [];
+  let ci = -1;
+  if (q.tipe === 'pg') ci = Number(q.jawaban) - 1;
+  else if (q.tipe === 'bs') ci = norm(q.jawaban) === 'benar' ? 0 : 1;
+  return { opts, ci };
+}
+
+function drawRunner() {
+  const el = $('#runner'); if (!el || !R) return;
+  const n = R.items.length;
+  const bar = `<div class="rbar"><span>${R.mat ? esc(R.mat.judul) : ''}</span><button class="btn ghost sm" data-act="full" data-target="runner">⛶ Layar penuh</button></div>`;
+  const back = `<a class="btn ghost" href="#/materi/${esc(R.mapelId)}/${esc(R.materiId)}">Kembali ke materi</a>`;
+  if (!n) { el.innerHTML = bar + `<p class="muted">Belum ada latihan untuk materi ini.</p>` + back; return; }
+  if (R.done) {
+    el.innerHTML = bar + `<div class="center"><h2>Latihan selesai 🎉</h2>
+      ${R.pres ? '' : `<div class="score">${R.score}/${n}</div><p class="muted">Skor ini hanya untuk belajar, tidak disimpan.</p>`}
+      <div class="row" style="justify-content:center"><button class="btn" data-act="restart">Ulangi</button>${back}</div></div>`;
+    return;
+  }
+  const q = R.items[R.i], { opts, ci } = qInfo(q);
+  const shown = R.pres ? R.shown : R.answered;
+  let body = `<div class="q">${nl2br(esc(q.pertanyaan))}</div>`;
+  if (q.tipe === 'isian') {
+    if (!R.pres) body += R.answered
+      ? `<div class="fld"><input value="${esc(R.text)}" disabled></div>`
+      : `<div class="fld"><input id="ans" placeholder="Ketik jawabanmu" autocomplete="off"></div><button class="btn" data-act="check">Periksa</button>`;
+  } else {
+    body += opts.map((o, k) => {
+      let cls = '';
+      if (shown) { if (k === ci) cls = 'ok'; else if (!R.pres && k === R.pick) cls = 'no'; }
+      const tag = R.pres ? 'div' : 'button';
+      return `<${tag} class="opt ${cls}" ${R.pres ? '' : `data-act="pick" data-i="${k}" ${shown ? 'disabled' : ''}`}><span class="l">${String.fromCharCode(65 + k)}</span><span>${esc(o)}</span></${tag}>`;
+    }).join('');
+  }
+  if (shown) {
+    const ans = q.tipe === 'isian' ? String(q.jawaban).split('|').map(s => s.trim()).join(' / ') : `${String.fromCharCode(65 + ci)}. ${opts[ci] || ''}`;
+    const right = R.pres ? null : R.ok;
+    body += `<div class="fb ${right === true ? 'ok' : right === false ? 'no' : ''}">${right === true ? '✅ Benar! ' : right === false ? '❌ Kurang tepat. ' : ''}Jawaban: <b>${esc(ans)}</b>${q.pembahasan ? `<div class="pemb">${nl2br(esc(q.pembahasan))}</div>` : ''}</div>`;
+  }
+  const last = R.i === n - 1;
+  const nav = R.pres
+    ? `<button class="btn ghost" data-act="prev" ${R.i === 0 ? 'disabled' : ''}>◀</button>${!shown ? '<button class="btn" data-act="reveal">Tampilkan jawaban</button>' : ''}<button class="btn" data-act="next">${last ? 'Selesai' : 'Berikutnya ▶'}</button>`
+    : shown ? `<button class="btn" data-act="next">${last ? 'Lihat hasil' : 'Berikutnya ▶'}</button>` : '';
+  el.innerHTML = bar + `<div class="muted">Soal ${R.i + 1} dari ${n}</div><div class="prog"><i style="width:${(R.i + (shown ? 1 : 0)) / n * 100}%"></i></div>${body}<div class="row">${nav}</div>`;
+  const inp = $('#ans'); if (inp) inp.focus();
+}
+
+function rReset() { R.answered = false; R.shown = false; R.ok = false; R.pick = null; R.text = ''; }
+function rPick(k) {
+  if (!R || R.answered) return;
+  const { ci } = qInfo(R.items[R.i]);
+  R.pick = k; R.answered = true; R.ok = k === ci; if (R.ok) R.score++;
+  drawRunner();
+}
+function rCheck() {
+  const inp = $('#ans'); if (!inp || R.answered) return;
+  if (!inp.value.trim()) { toast('Ketik jawaban dulu'); return; }
+  const q = R.items[R.i];
+  R.text = inp.value; R.answered = true;
+  R.ok = String(q.jawaban).split('|').map(norm).includes(norm(inp.value));
+  if (R.ok) R.score++;
+  drawRunner();
+}
+function rReveal() { if (R && R.pres && !R.shown) { R.shown = true; drawRunner(); } }
+function rNext() {
+  if (!R) return;
+  if (R.i >= R.items.length - 1) R.done = true; else { R.i++; rReset(); }
+  drawRunner();
+}
+function rPrev() { if (R && R.i > 0 && !R.done) { R.i--; rReset(); drawRunner(); } }
+function rRestart() { R.i = 0; R.score = 0; R.done = false; rReset(); drawRunner(); }
+
+document.addEventListener('keydown', e => {
+  if (!R || !$('#runner') || R.done || !R.items.length) return;
+  const t = e.target.tagName;
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(t)) { if (t === 'INPUT' && e.key === 'Enter') rCheck(); return; }
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { if (R.pres || R.answered) rNext(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { if (R.pres) rPrev(); }
+  else if ((e.key === ' ' || e.key === 'Enter') && !['BUTTON', 'A'].includes(t)) { e.preventDefault(); if (R.pres) rReveal(); }
+});
+
+// ---------- Form dialog ----------
+function fieldHtml(f, v) {
+  const id = 'f_' + f.name;
+  const show = f.showIf ? `data-showif="${esc(JSON.stringify(f.showIf))}"` : '';
+  let input;
+  if (f.type === 'textarea') input = `<textarea id="${id}" name="${f.name}" rows="${f.rows || 3}" ${f.required ? 'required' : ''}>${esc(v)}</textarea>`;
+  else if (f.type === 'select') input = `<select id="${id}" name="${f.name}">${f.options.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${String(v) === String(val) ? 'selected' : ''}>${esc(lab)}</option>`; }).join('')}</select>`;
+  else if (f.type === 'checkbox') input = `<label class="chk"><input type="checkbox" id="${id}" name="${f.name}" ${v ? 'checked' : ''}> ${esc(f.checkLabel || '')}</label>`;
+  else input = `<input id="${id}" name="${f.name}" type="${f.type || 'text'}" value="${esc(v)}" ${f.required ? 'required' : ''} ${f.attrs || ''}>`;
+  return `<div class="fld" ${show}><label for="${id}">${esc(f.label)}</label>${input}${f.hint ? `<small>${esc(f.hint)}</small>` : ''}</div>`;
+}
+
+function openForm({ title, fields, values = {}, submitLabel = 'Simpan', onSave }) {
+  const d = $('#dlg');
+  d.innerHTML = `<form id="dform"><h3>${esc(title)}</h3>${fields.map(f => fieldHtml(f, values[f.name])).join('')}
+    <div class="row end"><button type="button" class="btn ghost" data-close>Batal</button><button class="btn" type="submit">${esc(submitLabel)}</button></div></form>`;
+  const form = $('#dform', d);
+  const applyShow = () => d.querySelectorAll('[data-showif]').forEach(el => {
+    const c = JSON.parse(el.dataset.showif);
+    el.hidden = !Object.entries(c).every(([k, arr]) => { const x = form.elements[k]; return x && arr.includes(x.value); });
+  });
+  form.addEventListener('change', applyShow); applyShow();
+  form.querySelector('[data-close]').onclick = () => d.close();
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const v = {};
+    fields.forEach(f => { const x = form.elements[f.name]; v[f.name] = f.type === 'checkbox' ? x.checked : x.value; });
+    const btn = form.querySelector('[type=submit]'); btn.disabled = true;
+    try { await onSave(v); d.close(); toast('Tersimpan'); route(); }
+    catch (err) { toast(err.message); btn.disabled = false; }
+  };
+  d.showModal();
+}
+
+// ---------- Kelola ----------
+async function viewAdmin(main, tab) {
+  const tabs = [['mapel', 'Mapel'], ['materi', 'Materi'], ['latihan', 'Latihan']];
+  if (isAdmin()) tabs.push(['pengguna', 'Pengguna']);
+  if (!tabs.some(t => t[0] === tab)) tab = 'mapel';
+  main.innerHTML = `<h2 class="h">Kelola</h2><div class="chips">${tabs.map(t => `<a class="chip ${t[0] === tab ? 'on' : ''}" href="#/kelola/${t[0]}">${t[1]}</a>`).join('')}</div><div id="adm">${loader}</div>`;
+  const box = $('#adm');
+  if (tab === 'mapel') await admMapel(box);
+  else if (tab === 'materi') await admMateri(box);
+  else if (tab === 'latihan') await admLatihan(box);
+  else await admUsers(box);
+}
+
+const rowItem = (title, sub, id, prefix) => `<div class="item"><span class="grow"><b>${esc(title)}</b><br><small class="muted">${esc(sub)}</small></span>
+  <button class="btn ghost sm" data-act="${prefix}-edit" data-id="${esc(id)}">Ubah</button><button class="btn danger sm" data-act="${prefix}-del" data-id="${esc(id)}">Hapus</button></div>`;
+
+// Mapel
+async function admMapel(box) {
+  const list = await api('mapelList'); S.adm.mapel = list;
+  box.innerHTML = `<div class="row"><button class="btn" data-act="mapel-add">+ Tambah mapel</button></div>` +
+    (list.map(m => rowItem(m.nama, `${m.kelas || 'Semua kelas'} • urutan ${m.urutan}`, m.id, 'mapel')).join('') || '<div class="card muted">Belum ada mapel.</div>');
+}
+function mapelForm(m = {}) {
+  openForm({
+    title: m.id ? 'Ubah mata pelajaran' : 'Tambah mata pelajaran',
+    fields: [
+      { name: 'nama', label: 'Nama mata pelajaran', required: true },
+      { name: 'kelas', label: 'Kelas', hint: 'Mis. 7A. Kosongkan agar tampil untuk semua kelas.' },
+      { name: 'urutan', label: 'Urutan tampil', type: 'number' }
+    ],
+    values: m,
+    onSave: v => api('mapelSave', { id: m.id, nama: v.nama, kelas: v.kelas, urutan: v.urutan })
+  });
+}
+
+// Materi
+async function pickMapel(box) {
+  const mapel = await api('mapelList'); S.adm.mapel = mapel;
+  if (!mapel.length) { box.innerHTML = '<div class="card muted">Tambahkan mata pelajaran dulu di tab Mapel.</div>'; return null; }
+  if (!mapel.some(m => m.id === S.adm.mapelId)) { S.adm.mapelId = mapel[0].id; S.adm.materiId = null; }
+  return mapel;
+}
+const mapelSelect = mapel => `<div class="fld"><label>Mata pelajaran</label><select data-change="adm-mapel">${mapel.map(m => `<option value="${esc(m.id)}" ${m.id === S.adm.mapelId ? 'selected' : ''}>${esc(m.nama)} (${esc(m.kelas || 'Semua')})</option>`).join('')}</select></div>`;
+
+async function admMateri(box) {
+  const mapel = await pickMapel(box); if (!mapel) return;
+  const list = await api('materiList', { mapelId: S.adm.mapelId }); S.adm.materi = list;
+  box.innerHTML = mapelSelect(mapel) + `<div class="row"><button class="btn" data-act="materi-add">+ Tambah materi</button></div>` +
+    (list.map(m => rowItem(`${m.urutan}. ${m.judul}`, `${(TIPE_LABEL[m.tipe] || TIPE_LABEL.dokumen)[1]}${m.aktif ? '' : ' • nonaktif'}`, m.id, 'materi')).join('') || '<div class="card muted">Belum ada materi.</div>');
+}
+function materiForm(m = {}) {
+  openForm({
+    title: m.id ? 'Ubah materi' : 'Tambah materi',
+    fields: [
+      { name: 'judul', label: 'Judul materi', required: true },
+      { name: 'tipe', label: 'Jenis', type: 'select', options: [['slide', 'Slide (PowerPoint / Google Slides)'], ['video', 'Video'], ['dokumen', 'Dokumen lain']] },
+      { name: 'url', label: 'Link materi', type: 'url', required: true, hint: 'Tempel link Google Slides, Google Drive (PPT/PDF/video), atau YouTube. Akses harus "Siapa saja yang memiliki link".' },
+      { name: 'urutan', label: 'Urutan', type: 'number' },
+      { name: 'aktif', label: 'Status', type: 'checkbox', checkLabel: 'Tampilkan ke santri' }
+    ],
+    values: Object.assign({ tipe: 'slide', aktif: true }, m),
+    onSave: v => api('materiSave', { id: m.id, mapelId: S.adm.mapelId, judul: v.judul, tipe: v.tipe, url: v.url, urutan: v.urutan, aktif: v.aktif })
+  });
+}
+
+// Latihan
+async function admLatihan(box) {
+  const mapel = await pickMapel(box); if (!mapel) return;
+  const materi = await api('materiList', { mapelId: S.adm.mapelId });
+  if (!materi.some(m => m.id === S.adm.materiId)) S.adm.materiId = materi[0] ? materi[0].id : null;
+  let html = mapelSelect(mapel);
+  if (!materi.length) { box.innerHTML = html + '<div class="card muted">Mapel ini belum punya materi.</div>'; return; }
+  html += `<div class="fld"><label>Materi</label><select data-change="adm-materi">${materi.map(m => `<option value="${esc(m.id)}" ${m.id === S.adm.materiId ? 'selected' : ''}>${esc(m.judul)}</option>`).join('')}</select></div>`;
+  const list = await api('latihanList', { materiId: S.adm.materiId }); S.adm.latihan = list;
+  box.innerHTML = html + `<div class="row"><button class="btn" data-act="latihan-add">+ Tambah soal</button></div>` +
+    (list.map((q, i) => rowItem(`${i + 1}. ${q.pertanyaan.length > 90 ? q.pertanyaan.slice(0, 90) + '…' : q.pertanyaan}`, SOAL_LABEL[q.tipe] || q.tipe, q.id, 'latihan')).join('') || '<div class="card muted">Belum ada soal.</div>');
+}
+function latihanForm(q = {}) {
+  const v0 = Object.assign({ tipe: 'pg' }, q);
+  v0.jawabanPg = q.tipe === 'pg' ? q.jawaban : '1';
+  v0.jawabanBs = q.tipe === 'bs' ? q.jawaban : 'Benar';
+  v0.jawabanIsian = q.tipe === 'isian' ? q.jawaban : '';
+  openForm({
+    title: q.id ? 'Ubah soal' : 'Tambah soal',
+    fields: [
+      { name: 'tipe', label: 'Jenis soal', type: 'select', options: [['pg', 'Pilihan ganda'], ['bs', 'Benar / Salah'], ['isian', 'Isian singkat']] },
+      { name: 'pertanyaan', label: 'Pertanyaan', type: 'textarea', rows: 3, required: true },
+      { name: 'opsi', label: 'Pilihan jawaban', type: 'textarea', rows: 4, hint: 'Satu pilihan per baris.', showIf: { tipe: ['pg'] } },
+      { name: 'jawabanPg', label: 'Jawaban benar', type: 'select', options: [['1', 'Pilihan 1 (A)'], ['2', 'Pilihan 2 (B)'], ['3', 'Pilihan 3 (C)'], ['4', 'Pilihan 4 (D)'], ['5', 'Pilihan 5 (E)']], showIf: { tipe: ['pg'] } },
+      { name: 'jawabanBs', label: 'Jawaban benar', type: 'select', options: ['Benar', 'Salah'], showIf: { tipe: ['bs'] } },
+      { name: 'jawabanIsian', label: 'Jawaban benar', hint: 'Boleh lebih dari satu versi, pisahkan dengan tanda | (mis. shalat|sholat).', showIf: { tipe: ['isian'] } },
+      { name: 'pembahasan', label: 'Pembahasan (opsional)', type: 'textarea', rows: 3 },
+      { name: 'urutan', label: 'Urutan', type: 'number' }
+    ],
+    values: v0,
+    onSave: v => api('latihanSave', {
+      id: q.id, materiId: S.adm.materiId, tipe: v.tipe, pertanyaan: v.pertanyaan, opsi: v.opsi,
+      jawaban: v.tipe === 'pg' ? v.jawabanPg : v.tipe === 'bs' ? v.jawabanBs : v.jawabanIsian,
+      pembahasan: v.pembahasan, urutan: v.urutan
+    })
+  });
+}
+
+// Pengguna
+async function admUsers(box) {
+  const list = await api('usersList'); S.adm.users = list;
+  const roleLab = { admin: 'Admin', guru: 'Ustadz', santri: 'Santri' };
+  box.innerHTML = `<div class="row"><button class="btn" data-act="user-add">+ Tambah pengguna</button><button class="btn ghost" data-act="user-import">Impor banyak santri</button></div>` +
+    (list.map(u => `<div class="item"><span class="grow"><b>${esc(u.nama)}</b><br><small class="muted">${esc(u.username)} • ${roleLab[u.role]}${u.kelas ? ' • ' + esc(u.kelas) : ''}</small></span>
+      <button class="btn ghost sm" data-act="user-edit" data-id="${esc(u.username)}">Ubah</button>${u.username === S.user.username ? '' : `<button class="btn danger sm" data-act="user-del" data-id="${esc(u.username)}">Hapus</button>`}</div>`).join(''));
+}
+function userForm(u) {
+  const isNew = !u;
+  u = u || { role: 'santri' };
+  openForm({
+    title: isNew ? 'Tambah pengguna' : 'Ubah pengguna',
+    fields: [
+      { name: 'username', label: 'Username / NIS', required: true, attrs: isNew ? 'autocapitalize="none"' : 'readonly' },
+      { name: 'nama', label: 'Nama lengkap', required: true },
+      { name: 'role', label: 'Peran', type: 'select', options: [['santri', 'Santri'], ['guru', 'Ustadz / Guru'], ['admin', 'Admin']] },
+      { name: 'kelas', label: 'Kelas', hint: 'Untuk santri: menentukan mapel yang bisa dibuka. Harus sama persis dengan kelas di Mapel.' },
+      { name: 'pin', label: 'PIN', type: 'text', required: isNew, hint: isNew ? 'Minimal 4 karakter.' : 'Kosongkan jika tidak ingin mengubah PIN.', attrs: 'autocomplete="off"' }
+    ],
+    values: u,
+    onSave: v => api('userSave', { isNew, username: v.username, nama: v.nama, role: v.role, kelas: v.kelas, pin: v.pin })
+  });
+}
+function importForm() {
+  openForm({
+    title: 'Impor santri',
+    submitLabel: 'Impor',
+    fields: [{ name: 'data', label: 'Data santri', type: 'textarea', rows: 10, required: true, hint: 'Satu santri per baris: username/NIS, nama, kelas, PIN. Pisahkan dengan koma atau tab (bisa tempel dari Excel/Spreadsheet). Username yang sudah ada akan diperbarui.' }],
+    onSave: async v => {
+      const items = v.data.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+        const p = l.split(/[,;\t]/).map(s => s.trim());
+        return { username: p[0], nama: p[1], kelas: p[2], pin: p[3], role: 'santri' };
+      });
+      const r = await api('usersImport', { items });
+      toast(`${r.added} baru, ${r.updated} diperbarui, ${r.errors.length} gagal`);
+      if (r.errors.length) alert(r.errors.join('\n'));
+    }
+  });
+}
+function pinForm() {
+  openForm({
+    title: 'Ganti PIN',
+    fields: [
+      { name: 'oldPin', label: 'PIN lama', type: 'password', required: true },
+      { name: 'newPin', label: 'PIN baru', type: 'password', required: true, hint: 'Minimal 4 karakter.' }
+    ],
+    onSave: v => api('changePin', v)
+  });
+}
+
+// ---------- Event ----------
+const find = (arr, id, key = 'id') => (arr || []).find(x => String(x[key]) === String(id));
+async function del(label, action, params) {
+  if (!confirm(label)) return;
+  try { await api(action, params); toast('Dihapus'); route(); } catch (e) { toast(e.message); }
+}
+const H = {
+  home() { if (!location.hash || location.hash === '#/') route(); else location.hash = '#/'; },
+  admin() { location.hash = '#/kelola/mapel'; },
+  logout() { doLogout(); },
+  pin() { pinForm(); },
+  kelasfilter(el) { S.kelasFilter = el.dataset.v; window._drawHome && window._drawHome(); },
+  full(el) { toggleFull($('#' + el.dataset.target)); },
+  pick(el) { rPick(+el.dataset.i); }, check() { rCheck(); }, reveal() { rReveal(); },
+  next() { rNext(); }, prev() { rPrev(); }, restart() { rRestart(); },
+  'mapel-add'() { mapelForm(); }, 'mapel-edit'(el) { mapelForm(find(S.adm.mapel, el.dataset.id)); },
+  'mapel-del'(el) { del('Hapus mapel ini beserta semua materi dan latihannya?', 'mapelDelete', { id: el.dataset.id }); },
+  'materi-add'() { materiForm(); }, 'materi-edit'(el) { materiForm(find(S.adm.materi, el.dataset.id)); },
+  'materi-del'(el) { del('Hapus materi ini beserta latihannya?', 'materiDelete', { id: el.dataset.id }); },
+  'latihan-add'() { latihanForm(); }, 'latihan-edit'(el) { latihanForm(find(S.adm.latihan, el.dataset.id)); },
+  'latihan-del'(el) { del('Hapus soal ini?', 'latihanDelete', { id: el.dataset.id }); },
+  'user-add'() { userForm(); }, 'user-edit'(el) { userForm(find(S.adm.users, el.dataset.id, 'username')); },
+  'user-del'(el) { del('Hapus pengguna ini?', 'userDelete', { username: el.dataset.id }); },
+  'user-import'() { importForm(); }
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (el && H[el.dataset.act]) H[el.dataset.act](el);
+});
+document.addEventListener('change', e => {
+  const t = e.target.closest('[data-change]'); if (!t) return;
+  if (t.dataset.change === 'adm-mapel') { S.adm.mapelId = t.value; S.adm.materiId = null; route(); }
+  if (t.dataset.change === 'adm-materi') { S.adm.materiId = t.value; route(); }
+});
+document.addEventListener('submit', e => {
+  const f = e.target.closest('[data-form="login"]');
+  if (f) { e.preventDefault(); doLogin(f); }
+});
+
+// ---------- Mulai ----------
+(async function boot() {
+  if (!S.token) return renderLogin();
+  $('#app').innerHTML = loader;
+  try { S.user = await api('me'); route(); }
+  catch (e) { if (S.token) renderLogin(e.message); }
+})();
+</script>
+</body>
+</html>
