@@ -31,7 +31,7 @@
 }}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overflow-x:clip}
 body{margin:0;font:16px/1.6 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background-color:var(--bg);background-image:var(--bgpat);color:var(--ink)}
 h1,h2,h3{font-family:Amiri,"Noto Naskh Arabic",Georgia,serif;line-height:1.3;margin:0}
 .muted{color:var(--mute)}
@@ -55,7 +55,7 @@ h1,h2,h3{font-family:Amiri,"Noto Naskh Arabic",Georgia,serif;line-height:1.3;mar
 .bnav .nb{flex:1;flex-direction:column;gap:2px;font-size:.74rem;color:var(--mute);border-radius:18px;padding:7px 8px}
 .bnav .nb.on{color:var(--em);background:var(--em-soft)}
 @media (min-width:760px){.bnav{display:none}.dnav{display:flex}.wrap{padding-bottom:60px!important}}
-.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 120px}
+.wrap{max-width:1000px;width:100%;min-width:0;margin:0 auto;padding:20px 16px 120px}
 
 /* ---------- Komponen umum ---------- */
 .btn{appearance:none;border:0;background:linear-gradient(135deg,var(--em),var(--em2));color:var(--on);border-radius:14px;padding:11px 20px;font:inherit;font-weight:700;cursor:pointer;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-shadow:0 8px 18px -10px color-mix(in srgb,var(--em) 80%,transparent);transition:transform .12s,filter .12s}
@@ -74,7 +74,8 @@ h1,h2,h3{font-family:Amiri,"Noto Naskh Arabic",Georgia,serif;line-height:1.3;mar
 .sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--gold),transparent)}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
 .card.err{border-color:var(--bad);color:var(--bad)}
-.empty{padding:26px 18px;text-align:center;color:var(--mute);border:1.5px dashed var(--line);border-radius:20px}
+.empty{padding:26px 18px;text-align:center;color:var(--mute);border:1.5px dashed var(--line);border-radius:20px;width:100%;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-wrap:balance;line-height:1.7}
+.empty b{display:block;color:var(--ink);font-weight:700;margin-bottom:4px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px}
 .chip{white-space:nowrap;padding:7px 16px;border-radius:99px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);font:inherit;font-weight:600;font-size:.9rem;cursor:pointer;text-decoration:none}
 .chip.on{background:var(--em);color:var(--on);border-color:var(--em)}
@@ -196,7 +197,7 @@ dialog h3{font-size:1.5rem;margin-bottom:4px}
 
 <script>
 // ====== PENGATURAN: tempel URL Web App Google Apps Script di sini ======
-const API_URL = 'https://script.google.com/macros/s/AKfycbx7vOLcfxB9M0lhw5zPBs8ucdBfkAqAAH7_sipl5xDiyBGlrrX2_YYy6RG5KZjqHsJIVg/exec';
+const API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
 // ========================================================================
 
 const PAL = [['#0f5f45', '#1b8a63'], ['#8a620f', '#c79a2b'], ['#1f5f7a', '#2f8aa8'], ['#54447f', '#7a66b3'], ['#933a26', '#c25b3f'], ['#1b625d', '#2d958d']];
@@ -359,7 +360,12 @@ window.addEventListener('hashchange', route);
 async function viewHome(main) {
   const mapel = await api('mapelList');
   const kelas = [...new Set(mapel.map(m => m.kelas || 'Semua'))].sort();
-  const first = String(S.user.nama).trim().split(/\s+/)[0];
+  const parts = String(S.user.nama).trim().split(/\s+/);
+  // Lewati singkatan di depan nama (M., Muh., Moh., A., H., dst.) supaya nama tidak terpotong jadi "M."
+  let first = parts[0];
+  while (parts.length > 1 && /^(m|md|muh|muhd|moh|mohd|a|h|hj|k|kh|ust|ustadz)\.?$/i.test(first)) {
+    parts.shift(); first += ' ' + parts[0];
+  }
   const sub = !mapel.length ? '' : isStaff() ? `Ada ${mapel.length} mata pelajaran. Pilih satu untuk mulai mengajar.` : 'Pilih mata pelajaran untuk mulai belajar.';
   main.innerHTML = `<section class="greet"><div class="bism" lang="ar" dir="rtl">${BISMILLAH}</div>
     <h2>Assalamu'alaikum, ${esc(first)}</h2><p class="muted" style="margin:0">${sub}</p></section><div id="hhome"></div>`;
@@ -369,7 +375,7 @@ async function viewHome(main) {
       (isStaff() && kelas.length > 1 ? `<div class="chips"><button class="chip ${!S.kelasFilter ? 'on' : ''}" data-act="kelasfilter" data-v="">Semua kelas</button>${kelas.map(k => `<button class="chip ${S.kelasFilter === k ? 'on' : ''}" data-act="kelasfilter" data-v="${esc(k)}">${esc(k)}</button>`).join('')}</div>` : '') +
       (list.length
         ? `<div class="grid">${list.map(m => { const p = palFor(m.nama); return `<a class="tile" style="--c1:${p[0]};--c2:${p[1]}" href="#/mapel/${esc(m.id)}"><span class="t-ic">${ic('book', 24)}</span><span class="t-name">${esc(m.nama)}</span><span class="t-badge">${esc(m.kelas ? 'Kelas ' + m.kelas : 'Semua kelas')}</span></a>`; }).join('')}</div>`
-        : `<div class="empty">${isStaff() ? 'Belum ada mata pelajaran. Buka Kelola, lalu tab Mapel untuk menambahkannya.' : 'Belum ada mata pelajaran untuk kelasmu. Hubungi ustadz atau admin.'}</div>`);
+        : `<div class="empty">${isStaff() ? '<b>Belum ada mata pelajaran.</b>Buka Kelola, lalu tab Mapel untuk menambahkannya.' : '<b>Belum ada mata pelajaran untuk kelasmu.</b>Hubungi ustadz atau admin.'}</div>`);
   };
   window._drawHome = draw; draw();
 }
