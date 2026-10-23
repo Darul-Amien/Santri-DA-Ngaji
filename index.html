@@ -256,6 +256,20 @@ h1,h2,h3{font-family:var(--fh);font-weight:700;letter-spacing:-.012em;text-wrap:
 .imgprev img{width:100%;height:100%;object-fit:cover}
 .imgbtns{display:flex;gap:8px;flex-wrap:wrap}
 .btn.sm{padding:8px 12px;font-size:.85rem;cursor:pointer}
+
+/* Header sejajar konten + tidak terpotong */
+.top{padding-left:max(16px,calc((100vw - 1000px)/2 + 16px),env(safe-area-inset-left));padding-right:max(16px,calc((100vw - 1000px)/2 + 16px),env(safe-area-inset-right))}
+.brand .logo-img{flex:none;width:40px;height:40px}
+.bism{padding:.3em .2em;overflow:visible}
+.greet h2{overflow-wrap:anywhere}
+/* Kartu donasi */
+.donasi{margin:14px 0;padding:14px;border-radius:16px;text-align:left;border:1px solid var(--gold);background:linear-gradient(160deg,rgba(212,175,55,.14),rgba(212,175,55,.04))}
+.donasi h4{margin:0 0 6px;display:flex;align-items:center;gap:8px;font-family:var(--fh);color:var(--gold-d)}
+.donasi p{margin:0 0 10px;font-size:.88rem;color:var(--mute)}
+.donasi .qris{display:block;width:min(220px,70%);margin:0 auto 10px;border-radius:12px;background:#fff;padding:6px}
+.donasi .rek{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;border-radius:12px;background:var(--paper);border:1px solid var(--line)}
+.donasi .rek small{display:block;color:var(--mute);font-size:.78rem}
+.donasi .rek b{display:block;font-size:1.05rem;letter-spacing:.04em}
 </style>
 </head>
 <body>
@@ -274,6 +288,7 @@ const SOAL_LABEL = { pg: 'Pilihan ganda', bs: 'Benar atau salah', isian: 'Isian 
 const BISMILLAH = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
 const ICONS = {
+  heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
   home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
   sliders: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
   user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
@@ -658,11 +673,34 @@ function openForm({ title, fields, values = {}, submitLabel = 'Simpan', onSave }
   if (!d.open) d.showModal();
 }
 
+// ---------- Donasi (tampil di menu Akun untuk alumni, ustadz, admin) ----------
+// ISI DATA DI SINI. Kartu hanya muncul bila ada rekening (no) atau gambar QRIS.
+const DONASI = {
+  judul: 'Dukung Pesantren',
+  teks: 'Jazakumullah khairan. Donasi Anda membantu pendidikan santri dan pembangunan Pondok Pesantren Darul Amien.',
+  qris: '',   // contoh: 'qris.png' (taruh file gambar di folder yang sama dengan index.html)
+  rekening: [
+    // { bank: 'Bank Syariah Indonesia (BSI)', no: '1234567890', an: 'Pondok Pesantren Darul Amien' },
+  ],
+  konfirmasi: '' // opsional, contoh: 'https://wa.me/6281234567890'
+};
+function donasiHtml() {
+  const u = S.user, D = DONASI;
+  if (!u || u.role === 'santri') return '';
+  const rek = (D.rekening || []).filter(r => r && r.no);
+  if (!rek.length && !D.qris) return '';
+  return `<div class="donasi"><h4>${ic('heart', 18)} ${esc(D.judul)}</h4><p>${esc(D.teks)}</p>
+    ${D.qris ? `<img class="qris" src="${esc(D.qris)}" alt="QRIS donasi" loading="lazy">` : ''}
+    ${rek.map(r => `<div class="rek"><span class="grow"><small>${esc(r.bank)}</small><b>${esc(r.no)}</b><small>a.n. ${esc(r.an)}</small></span><button class="btn ghost sm" data-act="copy" data-v="${esc(r.no)}">Salin</button></div>`).join('')}
+    ${D.konfirmasi ? `<a class="btn ghost sm" href="${esc(D.konfirmasi)}" target="_blank" rel="noopener">Konfirmasi donasi</a>` : ''}</div>`;
+}
+
 function akunDialog() {
   const d = $('#dlg'), u = S.user;
   d.innerHTML = `<div class="acct"><div class="avatar lg">${esc(initial(u.nama))}</div><h3>${esc(u.nama)}</h3>
     <span class="badge ${u.role === 'admin' ? 'gold' : ''}">${ROLE_LAB[u.role]}</span>${u.kelas ? `<span class="badge">Kelas ${esc(u.kelas)}</span>` : ''}
     <p class="muted small" style="margin:8px 0 0">Username: ${esc(u.username)}</p></div>
+    ${donasiHtml()}
     <div class="stack"><button class="btn ghost" data-act="pin">${ic('key', 18)} Ganti PIN</button><button class="btn danger" data-act="logout">${ic('logout', 18)} Keluar</button><button class="btn ghost" data-close>Tutup</button></div>`;
   if (!d.open) d.showModal();
 }
@@ -834,6 +872,7 @@ const H = {
   admin() { closeDlg(); if (location.hash === '#/kelola/mapel') route(); else location.hash = '#/kelola/mapel'; },
   akun() { akunDialog(); },
   logout() { closeDlg(); doLogout(); },
+  copy(el) { const v = el.dataset.v; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('Nomor rekening disalin.'), () => toast('Salin manual: ' + v)); },
   pin() { pinForm(); },
   kelasfilter(el) { S.kelasFilter = el.dataset.v; window._drawHome && window._drawHome(); },
   full(el) { toggleFull($('#' + el.dataset.target)); },
