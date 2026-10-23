@@ -241,6 +241,21 @@ h1,h2,h3{font-family:var(--fh);font-weight:700;letter-spacing:-.012em;text-wrap:
 .orn{display:flex;align-items:center;gap:10px;color:var(--gold);max-width:230px;margin:4px auto 12px}
 .orn i{flex:1;height:1.5px;background:linear-gradient(90deg,transparent,var(--gold))}
 .orn i:last-child{background:linear-gradient(270deg,transparent,var(--gold))}
+
+/* Basmalah di tengah */
+.greet{text-align:center;padding:10px 2px 16px}
+.greet .bism,.lcard .bism{display:block;text-align:center}
+.greet h2,.greet p{text-align:center}
+/* Foto kitab */
+.t-ic:has(.t-img){background:rgba(255,255,255,.9);overflow:hidden;padding:0}
+.t-ic .t-img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .t-ic:has(.t-img){width:64px;height:64px;border-radius:14px}
+.banner .t-ic:has(.t-img){width:72px;height:72px;border-radius:14px}
+.imgfld{display:flex;align-items:center;gap:12px}
+.imgprev{width:72px;height:72px;border-radius:12px;border:1.5px dashed var(--line,#c9b98a);display:grid;place-items:center;overflow:hidden;flex:none;color:var(--gold-d)}
+.imgprev img{width:100%;height:100%;object-fit:cover}
+.imgbtns{display:flex;gap:8px;flex-wrap:wrap}
+.btn.sm{padding:8px 12px;font-size:.85rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -428,10 +443,32 @@ async function viewHome(main) {
     $('#hhome').innerHTML =
       (isStaff() && kelas.length > 1 ? `<div class="chips"><button class="chip ${!S.kelasFilter ? 'on' : ''}" data-act="kelasfilter" data-v="">Semua kelas</button>${kelas.map(k => `<button class="chip ${S.kelasFilter === k ? 'on' : ''}" data-act="kelasfilter" data-v="${esc(k)}">${esc(k)}</button>`).join('')}</div>` : '') +
       (list.length
-        ? `<div class="grid">${list.map(m => { const p = palFor(m.nama); return `<a class="tile" style="--c1:${p[0]};--c2:${p[1]}" href="#/mapel/${esc(m.id)}"><span class="t-ic">${ic('book', 24)}</span><span class="t-name">${esc(m.nama)}</span><span class="t-badge">${esc(m.kelas ? 'Kelas ' + m.kelas : 'Semua kelas')}</span></a>`; }).join('')}</div>`
+        ? `<div class="grid">${list.map(m => { const p = palFor(m.nama); return `<a class="tile" style="--c1:${p[0]};--c2:${p[1]}" href="#/mapel/${esc(m.id)}"><span class="t-ic">${icImg(m, 24)}</span><span class="t-name">${esc(m.nama)}</span><span class="t-badge">${esc(m.kelas ? 'Kelas ' + m.kelas : 'Semua kelas')}</span></a>`; }).join('')}</div>`
         : `<div class="empty">${isStaff() ? '<b>Belum ada mata pelajaran.</b>Buka Kelola, lalu tab Mapel untuk menambahkannya.' : '<b>Belum ada mata pelajaran untuk kelasmu.</b>Hubungi ustadz atau admin.'}</div>`);
   };
   window._drawHome = draw; draw();
+}
+
+// ---------- Gambar kitab (ikon mapel) ----------
+const okImg = g => /^data:image\/(jpeg|png|webp);base64,/.test(g || '');
+function icImg(m, size) {
+  return okImg(m.gambar) ? `<img class="t-img" src="${esc(m.gambar)}" alt="" loading="lazy">` : ic('book', size);
+}
+function resizeImage(file, max = 360) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, max / Math.max(im.width, im.height));
+      const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      let q = .82, out = c.toDataURL('image/jpeg', q);
+      while (out.length > 42000 && q > .35) { q -= .1; out = c.toDataURL('image/jpeg', q); }
+      out.length > 45000 ? rej(new Error('Gambar terlalu besar, pilih foto lain.')) : res(out);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('File bukan gambar yang valid.')); };
+    im.src = url;
+  });
 }
 
 // ---------- Daftar materi ----------
@@ -441,7 +478,7 @@ async function viewMapel(main, id) {
   if (!mp) throw new Error('Mata pelajaran tidak ditemukan.');
   const p = palFor(mp.nama);
   main.innerHTML = `<a class="back" href="#/">${ic('left', 18)} Beranda</a>
-    <section class="banner" style="--c1:${p[0]};--c2:${p[1]}"><span class="t-ic">${ic('book', 26)}</span>
+    <section class="banner" style="--c1:${p[0]};--c2:${p[1]}"><span class="t-ic">${icImg(mp, 26)}</span>
       <div><h2>${esc(mp.nama)}</h2><span class="t-badge">${esc(mp.kelas ? 'Kelas ' + mp.kelas : 'Semua kelas')}</span><span class="t-badge">${materi.length} materi</span></div></section>
     <div class="sec">Daftar materi</div>
     ${materi.length ? `<div class="rows">${materi.map((m, i) => {
@@ -585,6 +622,7 @@ function fieldHtml(f, v) {
   let input;
   if (f.type === 'textarea') input = `<textarea id="${id}" name="${f.name}" rows="${f.rows || 3}" ${f.required ? 'required' : ''}>${esc(v)}</textarea>`;
   else if (f.type === 'select') input = `<select id="${id}" name="${f.name}">${f.options.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}" ${String(v) === String(val) ? 'selected' : ''}>${esc(lab)}</option>`; }).join('')}</select>`;
+  else if (f.type === 'image') input = `<div class="imgfld"><span class="imgprev">${okImg(v) ? `<img src="${esc(v)}" alt="">` : ic('book', 28)}</span><div class="imgbtns"><label class="btn ghost sm" for="${id}f">Pilih foto</label><button type="button" class="btn ghost sm" data-imgclear>Hapus</button></div><input type="file" id="${id}f" accept="image/*" hidden><input type="hidden" id="${id}" name="${f.name}" value="${esc(v)}"></div>`;
   else if (f.type === 'checkbox') input = `<label class="chk"><input type="checkbox" id="${id}" name="${f.name}" ${v ? 'checked' : ''}> ${esc(f.checkLabel || '')}</label>`;
   else input = `<input id="${id}" name="${f.name}" type="${f.type || 'text'}" value="${esc(v)}" ${f.required ? 'required' : ''} ${f.attrs || ''}>`;
   return `<div class="fld" ${show}><label for="${id}">${esc(f.label)}</label>${input}${f.hint ? `<small>${esc(f.hint)}</small>` : ''}</div>`;
@@ -600,6 +638,15 @@ function openForm({ title, fields, values = {}, submitLabel = 'Simpan', onSave }
     el.hidden = !Object.entries(c).every(([k, arr]) => { const x = form.elements[k]; return x && arr.includes(x.value); });
   });
   form.addEventListener('change', applyShow); applyShow();
+  d.querySelectorAll('.imgfld').forEach(w => {
+    const hid = w.querySelector('input[type=hidden]'), prev = w.querySelector('.imgprev');
+    w.querySelector('input[type=file]').onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try { hid.value = await resizeImage(f); prev.innerHTML = `<img src="${hid.value}" alt="">`; } catch (err) { toast(err.message); }
+      e.target.value = '';
+    };
+    w.querySelector('[data-imgclear]').onclick = () => { hid.value = ''; prev.innerHTML = ic('book', 28); };
+  });
   form.onsubmit = async e => {
     e.preventDefault();
     const v = {};
@@ -649,10 +696,11 @@ function mapelForm(m = {}) {
     fields: [
       { name: 'nama', label: 'Nama mata pelajaran', required: true },
       { name: 'kelas', label: 'Kelas', hint: 'Contoh: 7A. Kosongkan agar tampil untuk semua kelas.' },
-      { name: 'urutan', label: 'Urutan tampil', type: 'number' }
+      { name: 'urutan', label: 'Urutan tampil', type: 'number' },
+      { name: 'gambar', label: 'Foto kitab (ikon)', type: 'image', hint: 'Opsional. Foto otomatis dikecilkan. Kosongkan untuk ikon buku bawaan.' }
     ],
     values: m,
-    onSave: v => api('mapelSave', { id: m.id, nama: v.nama, kelas: v.kelas, urutan: v.urutan })
+    onSave: v => api('mapelSave', { id: m.id, nama: v.nama, kelas: v.kelas, urutan: v.urutan, gambar: v.gambar })
   });
 }
 
