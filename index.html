@@ -270,6 +270,8 @@ h1,h2,h3{font-family:var(--fh);font-weight:700;letter-spacing:-.012em;text-wrap:
 .donasi .rek{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;border-radius:12px;background:var(--paper);border:1px solid var(--line)}
 .donasi .rek small{display:block;color:var(--mute);font-size:.78rem}
 .donasi .rek b{display:block;font-size:1.05rem;letter-spacing:.04em}
+
+.danger-t{color:#b3261e}
 </style>
 </head>
 <body>
@@ -327,12 +329,12 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nl2br = s => String(s).replace(/\n/g, '<br>');
 const norm = s => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
-const isStaff = () => S.user && S.user.role !== 'santri' && S.user.role !== 'alumni';
+const isStaff = () => S.user && ['admin', 'guru'].includes(S.user.role);
 const isAdmin = () => S.user && S.user.role === 'admin';
 const initial = n => String(n || '?').trim().charAt(0).toUpperCase();
 const loader = '<div class="loader"><div class="spin"></div>Memuat…</div>';
 const palFor = s => PAL[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % PAL.length];
-const ROLE_LAB = { admin: 'Admin', guru: 'Ustadz', santri: 'Santri', alumni: 'Alumni' };
+const ROLE_LAB = { admin: 'Admin', guru: 'Ustadz', santri: 'Santri', alumni: 'Alumni', ikbada: 'Anggota IKBADA', umum: 'Umum' };
 
 let toastT;
 function toast(msg) {
@@ -374,6 +376,7 @@ function embedUrl(u) {
 }
 
 // ---------- Masuk / keluar ----------
+const REGISTRASI = true; // samakan dengan REGISTRASI_TERBUKA di code.gs
 function renderLogin(msg) {
   $('#app').innerHTML = `<div class="login"><div class="lcard">
     ${LOGO(64)}
@@ -386,6 +389,7 @@ function renderLogin(msg) {
       <div class="fld"><label for="lp">PIN</label><input id="lp" name="pin" type="password" autocomplete="current-password" required></div>
       ${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ''}
       <button class="btn" style="width:100%;margin-top:14px">Masuk</button>
+      ${REGISTRASI ? `<button type="button" class="btn ghost" style="width:100%;margin-top:10px" data-act="register">Daftar akun baru</button>` : ''}
       <p class="muted small" style="text-align:center;margin:12px 0 0">Lupa PIN? Minta ustadz atau admin untuk mengatur ulang.</p>
     </form></div></div>`;
 }
@@ -695,13 +699,38 @@ function donasiHtml() {
     ${D.konfirmasi ? `<a class="btn ghost sm" href="${esc(D.konfirmasi)}" target="_blank" rel="noopener">Konfirmasi donasi</a>` : ''}</div>`;
 }
 
+function registerForm() {
+  openForm({
+    title: 'Daftar akun baru', submitLabel: 'Daftar',
+    fields: [
+      { name: 'nama', label: 'Nama lengkap', required: true },
+      { name: 'role', label: 'Daftar sebagai', type: 'select', options: [['alumni', 'Alumni'], ['ikbada', 'Anggota IKBADA'], ['umum', 'Umum']] },
+      { name: 'username', label: 'Username', required: true, hint: '3-30 karakter: huruf kecil, angka, titik, strip, garis bawah.', attrs: 'autocapitalize="none"' },
+      { name: 'pin', label: 'PIN', type: 'password', required: true, hint: 'Minimal 6 karakter.' },
+      { name: 'pin2', label: 'Ulangi PIN', type: 'password', required: true }
+    ],
+    onSave: async v => {
+      if (v.pin !== v.pin2) throw new Error('PIN dan ulangi PIN tidak sama.');
+      const d = await api('register', { role: v.role, username: v.username, nama: v.nama, pin: v.pin });
+      S.token = d.token; S.user = d.user; ls('set', 'lms_token', d.token); location.hash = '#/';
+    }
+  });
+}
+function deleteMeForm() {
+  openForm({
+    title: 'Hapus akun saya', submitLabel: 'Hapus akun permanen',
+    fields: [{ name: 'pin', label: 'Masukkan PIN untuk konfirmasi', type: 'password', required: true, hint: 'Akun dan data login Anda akan dihapus permanen dan tidak bisa dikembalikan.' }],
+    onSave: async v => { await api('deleteMe', { pin: v.pin }); S.token = null; S.user = null; ls('del', 'lms_token'); }
+  });
+}
+
 function akunDialog() {
   const d = $('#dlg'), u = S.user;
   d.innerHTML = `<div class="acct"><div class="avatar lg">${esc(initial(u.nama))}</div><h3>${esc(u.nama)}</h3>
     <span class="badge ${u.role === 'admin' ? 'gold' : ''}">${ROLE_LAB[u.role]}</span>${u.kelas ? `<span class="badge">Kelas ${esc(u.kelas)}</span>` : ''}
     <p class="muted small" style="margin:8px 0 0">Username: ${esc(u.username)}</p></div>
     ${donasiHtml()}
-    <div class="stack"><button class="btn ghost" data-act="pin">${ic('key', 18)} Ganti PIN</button><button class="btn danger" data-act="logout">${ic('logout', 18)} Keluar</button><button class="btn ghost" data-close>Tutup</button></div>`;
+    <div class="stack"><button class="btn ghost" data-act="pin">${ic('key', 18)} Ganti PIN</button><button class="btn danger" data-act="logout">${ic('logout', 18)} Keluar</button><button class="btn ghost" data-close>Tutup</button>${u.role !== 'admin' ? `<button class="btn ghost danger-t" data-act="delme">Hapus akun saya</button>` : ''}</div>`;
   if (!d.open) d.showModal();
 }
 
@@ -825,7 +854,7 @@ function userForm(u) {
     fields: [
       { name: 'username', label: 'Username atau NIS', required: true, attrs: isNew ? 'autocapitalize="none"' : 'readonly' },
       { name: 'nama', label: 'Nama lengkap', required: true },
-      { name: 'role', label: 'Peran', type: 'select', options: [['santri', 'Santri'], ['alumni', 'Alumni'], ['guru', 'Ustadz atau guru'], ['admin', 'Admin']] },
+      { name: 'role', label: 'Peran', type: 'select', options: [['santri', 'Santri'], ['alumni', 'Alumni'], ['ikbada', 'Anggota IKBADA'], ['umum', 'Umum'], ['guru', 'Ustadz atau guru'], ['admin', 'Admin']] },
       { name: 'kelas', label: 'Kelas', hint: 'Untuk santri dan alumni: menentukan mapel yang bisa dibuka. Tulis sama persis dengan kelas di tab Mapel.' },
       { name: 'pin', label: 'PIN', type: 'text', required: isNew, hint: isNew ? 'Minimal 4 karakter.' : 'Kosongkan jika PIN tidak diubah.', attrs: 'autocomplete="off"' }
     ],
@@ -874,6 +903,8 @@ const H = {
   logout() { closeDlg(); doLogout(); },
   copy(el) { const v = el.dataset.v; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('Nomor rekening disalin.'), () => toast('Salin manual: ' + v)); },
   pin() { pinForm(); },
+  register() { registerForm(); },
+  delme() { deleteMeForm(); },
   kelasfilter(el) { S.kelasFilter = el.dataset.v; window._drawHome && window._drawHome(); },
   full(el) { toggleFull($('#' + el.dataset.target)); },
   pick(el) { rPick(+el.dataset.i); }, check() { rCheck(); }, reveal() { rReveal(); },
