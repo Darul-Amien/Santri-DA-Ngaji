@@ -312,12 +312,12 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nl2br = s => String(s).replace(/\n/g, '<br>');
 const norm = s => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
-const isStaff = () => S.user && S.user.role !== 'santri';
+const isStaff = () => S.user && S.user.role !== 'santri' && S.user.role !== 'alumni';
 const isAdmin = () => S.user && S.user.role === 'admin';
 const initial = n => String(n || '?').trim().charAt(0).toUpperCase();
 const loader = '<div class="loader"><div class="spin"></div>Memuat…</div>';
 const palFor = s => PAL[[...String(s)].reduce((a, c) => a + c.charCodeAt(0), 0) % PAL.length];
-const ROLE_LAB = { admin: 'Admin', guru: 'Ustadz', santri: 'Santri' };
+const ROLE_LAB = { admin: 'Admin', guru: 'Ustadz', santri: 'Santri', alumni: 'Alumni' };
 
 let toastT;
 function toast(msg) {
@@ -787,8 +787,8 @@ function userForm(u) {
     fields: [
       { name: 'username', label: 'Username atau NIS', required: true, attrs: isNew ? 'autocapitalize="none"' : 'readonly' },
       { name: 'nama', label: 'Nama lengkap', required: true },
-      { name: 'role', label: 'Peran', type: 'select', options: [['santri', 'Santri'], ['guru', 'Ustadz atau guru'], ['admin', 'Admin']] },
-      { name: 'kelas', label: 'Kelas', hint: 'Untuk santri: menentukan mapel yang bisa dibuka. Tulis sama persis dengan kelas di tab Mapel.' },
+      { name: 'role', label: 'Peran', type: 'select', options: [['santri', 'Santri'], ['alumni', 'Alumni'], ['guru', 'Ustadz atau guru'], ['admin', 'Admin']] },
+      { name: 'kelas', label: 'Kelas', hint: 'Untuk santri dan alumni: menentukan mapel yang bisa dibuka. Tulis sama persis dengan kelas di tab Mapel.' },
       { name: 'pin', label: 'PIN', type: 'text', required: isNew, hint: isNew ? 'Minimal 4 karakter.' : 'Kosongkan jika PIN tidak diubah.', attrs: 'autocomplete="off"' }
     ],
     values: u,
