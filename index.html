@@ -261,7 +261,9 @@ h1,h2,h3{font-family:var(--fh);font-weight:700;letter-spacing:-.012em;text-wrap:
 .top{padding-left:max(16px,calc((100vw - 1000px)/2 + 16px),env(safe-area-inset-left));padding-right:max(16px,calc((100vw - 1000px)/2 + 16px),env(safe-area-inset-right))}
 .brand .logo-img{flex:none;width:40px;height:40px}
 .bism{padding:.3em .2em;overflow:visible}
-.greet h2{overflow-wrap:anywhere}
+.greet h2{overflow-wrap:anywhere;text-wrap:balance}
+.greet h2.long{font-size:1.5rem}
+.greet h2.xlong{font-size:1.25rem}
 /* Kartu donasi */
 .donasi{margin:14px 0;padding:14px;border-radius:16px;text-align:left;border:1px solid var(--gold);background:linear-gradient(160deg,rgba(212,175,55,.14),rgba(212,175,55,.04))}
 .donasi h4{margin:0 0 6px;display:flex;align-items:center;gap:8px;font-family:var(--fh);color:var(--gold-d)}
@@ -448,15 +450,11 @@ window.addEventListener('hashchange', route);
 async function viewHome(main) {
   const mapel = await api('mapelList');
   const kelas = [...new Set(mapel.map(m => m.kelas || 'Semua'))].sort();
-  const parts = String(S.user.nama).trim().split(/\s+/);
-  // Lewati singkatan di depan nama (M., Muh., Moh., A., H., dst.) supaya nama tidak terpotong jadi "M."
-  let first = parts[0];
-  while (parts.length > 1 && /^(m|md|muh|muhd|moh|mohd|a|h|hj|k|kh|ust|ustadz)\.?$/i.test(first)) {
-    parts.shift(); first += ' ' + parts[0];
-  }
+  const nama = String(S.user.nama).trim().replace(/\s+/g, ' ');
+  const lc = nama.length > 34 ? 'xlong' : nama.length > 20 ? 'long' : '';
   const sub = !mapel.length ? '' : isStaff() ? `Ada ${mapel.length} mata pelajaran. Pilih satu untuk mulai mengajar.` : 'Pilih mata pelajaran untuk mulai belajar.';
   main.innerHTML = `<section class="greet"><div class="bism" lang="ar" dir="rtl">${BISMILLAH}</div>
-    <h2>Assalamu'alaikum, ${esc(first)}</h2><p class="muted" style="margin:0">${sub}</p></section><div id="hhome"></div>`;
+    <h2 class="${lc}">Assalamu'alaikum, ${esc(nama)}</h2><p class="muted" style="margin:0">${sub}</p></section><div id="hhome"></div>`;
   const draw = () => {
     const list = mapel.filter(m => !S.kelasFilter || (m.kelas || 'Semua') === S.kelasFilter);
     $('#hhome').innerHTML =
@@ -681,6 +679,14 @@ function openForm({ title, fields, values = {}, submitLabel = 'Simpan', onSave }
 // Nomor rekening, judul, teks, dan link konfirmasi diatur admin di Kelola > Donasi (tersimpan di sheet "Pengaturan").
 // Gambar QRIS (opsional) tetap berupa file: taruh di folder yang sama dengan index.html lalu isi namanya di bawah.
 const QRIS_FILE = '';   // contoh: 'qris.png'
+function donasiSlot(err) {
+  const s = $('#donasi-slot'); if (!s) return;
+  let html = donasiHtml();
+  if (!html && S.user && S.user.role === 'admin') {
+    html = `<p class="muted small" style="margin:12px 0">${err ? 'Data donasi gagal dimuat: ' + esc(err) : 'Kartu donasi belum tampil karena belum ada rekening. Tambahkan di Kelola > Donasi.'}</p>`;
+  }
+  s.innerHTML = html;
+}
 function donasiHtml() {
   const u = S.user, D = S.donasi;
   if (!u || u.role === 'santri' || !D) return '';
@@ -726,8 +732,8 @@ function akunDialog() {
     <div class="stack"><button class="btn ghost" data-act="pin">${ic('key', 18)} Ganti PIN</button><button class="btn danger" data-act="logout">${ic('logout', 18)} Keluar</button><button class="btn ghost" data-close>Tutup</button>${u.role !== 'admin' ? `<button class="btn ghost danger-t" data-act="delme">Hapus akun saya</button>` : ''}</div>`;
   if (!d.open) d.showModal();
   if (u.role !== 'santri' && S.donasi === undefined) {
-    api('donasiGet').then(x => { S.donasi = x; const s = $('#donasi-slot'); if (s) s.innerHTML = donasiHtml(); }).catch(() => {});
-  }
+    api('donasiGet').then(x => { S.donasi = x; donasiSlot(); }).catch(e => { if (u.role === 'admin') donasiSlot(e.message); });
+  } else donasiSlot();
 }
 
 // ---------- Kelola ----------
