@@ -678,23 +678,16 @@ function openForm({ title, fields, values = {}, submitLabel = 'Simpan', onSave }
 }
 
 // ---------- Donasi (tampil di menu Akun untuk alumni, ustadz, admin) ----------
-// ISI DATA DI SINI. Kartu hanya muncul bila ada rekening (no) atau gambar QRIS.
-const DONASI = {
-  judul: 'Dukung Pesantren',
-  teks: 'Jazakumullah khairan. Donasi Anda membantu pendidikan santri dan pembangunan Pondok Pesantren Darul Amien.',
-  qris: '',   // contoh: 'qris.png' (taruh file gambar di folder yang sama dengan index.html)
-  rekening: [
-    // { bank: 'Bank Syariah Indonesia (BSI)', no: '1234567890', an: 'Pondok Pesantren Darul Amien' },
-  ],
-  konfirmasi: '' // opsional, contoh: 'https://wa.me/6281234567890'
-};
+// Nomor rekening, judul, teks, dan link konfirmasi diatur admin di Kelola > Donasi (tersimpan di sheet "Pengaturan").
+// Gambar QRIS (opsional) tetap berupa file: taruh di folder yang sama dengan index.html lalu isi namanya di bawah.
+const QRIS_FILE = '';   // contoh: 'qris.png'
 function donasiHtml() {
-  const u = S.user, D = DONASI;
-  if (!u || u.role === 'santri') return '';
+  const u = S.user, D = S.donasi;
+  if (!u || u.role === 'santri' || !D) return '';
   const rek = (D.rekening || []).filter(r => r && r.no);
-  if (!rek.length && !D.qris) return '';
+  if (!rek.length && !QRIS_FILE) return '';
   return `<div class="donasi"><h4>${ic('heart', 18)} ${esc(D.judul)}</h4><p>${esc(D.teks)}</p>
-    ${D.qris ? `<img class="qris" src="${esc(D.qris)}" alt="QRIS donasi" loading="lazy">` : ''}
+    ${QRIS_FILE ? `<img class="qris" src="${esc(QRIS_FILE)}" alt="QRIS donasi" loading="lazy">` : ''}
     ${rek.map(r => `<div class="rek"><span class="grow"><small>${esc(r.bank)}</small><b>${esc(r.no)}</b><small>a.n. ${esc(r.an)}</small></span><button class="btn ghost sm" data-act="copy" data-v="${esc(r.no)}">Salin</button></div>`).join('')}
     ${D.konfirmasi ? `<a class="btn ghost sm" href="${esc(D.konfirmasi)}" target="_blank" rel="noopener">Konfirmasi donasi</a>` : ''}</div>`;
 }
@@ -729,21 +722,25 @@ function akunDialog() {
   d.innerHTML = `<div class="acct"><div class="avatar lg">${esc(initial(u.nama))}</div><h3>${esc(u.nama)}</h3>
     <span class="badge ${u.role === 'admin' ? 'gold' : ''}">${ROLE_LAB[u.role]}</span>${u.kelas ? `<span class="badge">Kelas ${esc(u.kelas)}</span>` : ''}
     <p class="muted small" style="margin:8px 0 0">Username: ${esc(u.username)}</p></div>
-    ${donasiHtml()}
+    <div id="donasi-slot">${donasiHtml()}</div>
     <div class="stack"><button class="btn ghost" data-act="pin">${ic('key', 18)} Ganti PIN</button><button class="btn danger" data-act="logout">${ic('logout', 18)} Keluar</button><button class="btn ghost" data-close>Tutup</button>${u.role !== 'admin' ? `<button class="btn ghost danger-t" data-act="delme">Hapus akun saya</button>` : ''}</div>`;
   if (!d.open) d.showModal();
+  if (u.role !== 'santri' && S.donasi === undefined) {
+    api('donasiGet').then(x => { S.donasi = x; const s = $('#donasi-slot'); if (s) s.innerHTML = donasiHtml(); }).catch(() => {});
+  }
 }
 
 // ---------- Kelola ----------
 async function viewAdmin(main, tab) {
   const tabs = [['mapel', 'Mapel'], ['materi', 'Materi'], ['latihan', 'Latihan']];
-  if (isAdmin()) tabs.push(['pengguna', 'Pengguna']);
+  if (isAdmin()) tabs.push(['pengguna', 'Pengguna'], ['donasi', 'Donasi']);
   if (!tabs.some(t => t[0] === tab)) tab = 'mapel';
   main.innerHTML = `<h2 style="font-size:1.9rem">Kelola</h2><div class="seg" role="tablist">${tabs.map(t => `<a class="${t[0] === tab ? 'on' : ''}" href="#/kelola/${t[0]}">${t[1]}</a>`).join('')}</div><div id="adm">${loader}</div>`;
   const box = $('#adm');
   if (tab === 'mapel') await admMapel(box);
   else if (tab === 'materi') await admMateri(box);
   else if (tab === 'latihan') await admLatihan(box);
+  else if (tab === 'donasi' && isAdmin()) await admDonasi(box);
   else await admUsers(box);
 }
 
@@ -839,6 +836,52 @@ function latihanForm(q = {}) {
   });
 }
 
+// Donasi (admin)
+async function admDonasi(box) {
+  const D = await api('donasiGet'); S.adm.donasi = D;
+  const rek = D.rekening || [];
+  box.innerHTML = `<div class="item"><span class="grow"><b>${esc(D.judul)}</b><span class="meta">${esc(D.teks) || 'Tanpa teks pengantar'}${D.konfirmasi ? `<br>Konfirmasi: ${esc(D.konfirmasi)}` : ''}</span></span>
+      <button class="btn ghost icon" data-act="donasi-info" aria-label="Ubah" title="Ubah teks">${ic('edit', 18)}</button></div>` +
+    `<div class="row"><button class="btn" data-act="rek-add">${ic('plus', 18)} Tambah rekening</button></div>` +
+    (rek.length ? `<div class="rows">${rek.map((r, i) => rowItem(r.no, `${esc(r.bank)}<span class="badge">a.n. ${esc(r.an)}</span>`, i, 'rek')).join('')}</div>` : '<div class="empty">Belum ada rekening. Kartu donasi baru muncul di menu Akun setelah ada minimal satu rekening.</div>');
+}
+async function donasiSimpan(patch) {
+  const D = Object.assign({}, S.adm.donasi, patch);
+  S.donasi = undefined;
+  await api('donasiSave', { judul: D.judul, teks: D.teks, konfirmasi: D.konfirmasi, rekening: D.rekening });
+}
+function donasiInfoForm() {
+  const D = S.adm.donasi || {};
+  openForm({
+    title: 'Teks kartu donasi',
+    fields: [
+      { name: 'judul', label: 'Judul', required: true },
+      { name: 'teks', label: 'Teks pengantar', type: 'textarea', rows: 4 },
+      { name: 'konfirmasi', label: 'Link konfirmasi donasi', hint: 'Opsional. Contoh: https://wa.me/6281234567890. Kosongkan jika tidak perlu.', attrs: 'autocapitalize="none"' }
+    ],
+    values: D,
+    onSave: v => donasiSimpan({ judul: v.judul, teks: v.teks, konfirmasi: v.konfirmasi })
+  });
+}
+function rekForm(i) {
+  const list = (S.adm.donasi && S.adm.donasi.rekening) || [];
+  const isNew = i === undefined;
+  openForm({
+    title: isNew ? 'Tambah rekening' : 'Ubah rekening',
+    fields: [
+      { name: 'bank', label: 'Nama bank', required: true, hint: 'Contoh: Bank Syariah Indonesia (BSI)' },
+      { name: 'no', label: 'Nomor rekening', required: true, attrs: 'inputmode="numeric" autocomplete="off"' },
+      { name: 'an', label: 'Atas nama', required: true, hint: 'Contoh: Pondok Pesantren Darul Amien' }
+    ],
+    values: isNew ? {} : list[i],
+    onSave: v => {
+      const next = list.slice(), r = { bank: v.bank, no: v.no, an: v.an };
+      if (isNew) next.push(r); else next[i] = r;
+      return donasiSimpan({ rekening: next });
+    }
+  });
+}
+
 // Pengguna
 async function admUsers(box) {
   const list = await api('usersList'); S.adm.users = list;
@@ -917,7 +960,16 @@ const H = {
   'latihan-del'(el) { del('Hapus soal ini?', 'latihanDelete', { id: el.dataset.id }); },
   'user-add'() { userForm(); }, 'user-edit'(el) { userForm(find(S.adm.users, el.dataset.id, 'username')); },
   'user-del'(el) { del('Hapus pengguna ini?', 'userDelete', { username: el.dataset.id }); },
-  'user-import'() { importForm(); }
+  'user-import'() { importForm(); },
+  'donasi-info'() { donasiInfoForm(); },
+  'rek-add'() { rekForm(); }, 'rek-edit'(el) { rekForm(+el.dataset.id); },
+  async 'rek-del'(el) {
+    if (!confirm('Hapus rekening ini?')) return;
+    try {
+      const list = S.adm.donasi.rekening.filter((_, i) => i !== +el.dataset.id);
+      await donasiSimpan({ rekening: list }); toast('Dihapus.'); route();
+    } catch (e) { toast(e.message); }
+  }
 };
 document.addEventListener('click', e => {
   if (e.target.closest('[data-close]')) { closeDlg(); return; }
