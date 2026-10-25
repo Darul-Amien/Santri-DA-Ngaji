@@ -754,7 +754,11 @@ async function viewAdmin(main, tab) {
   else await admUsers(box);
 }
 
-const actBtns = (id, prefix) => `<button class="btn ghost icon" data-act="${prefix}-edit" data-id="${esc(id)}" aria-label="Ubah" title="Ubah">${ic('edit', 18)}</button><button class="btn danger icon" data-act="${prefix}-del" data-id="${esc(id)}" aria-label="Hapus" title="Hapus">${ic('trash', 18)}</button>`;
+const actBtns = (id, prefix) => {
+  const canDel = isAdmin() || !['mapel', 'materi'].includes(prefix);
+  return `<button class="btn ghost icon" data-act="${prefix}-edit" data-id="${esc(id)}" aria-label="Ubah" title="Ubah">${ic('edit', 18)}</button>` +
+    (canDel ? `<button class="btn danger icon" data-act="${prefix}-del" data-id="${esc(id)}" aria-label="Hapus" title="Hapus">${ic('trash', 18)}</button>` : '');
+};
 const rowItem = (title, sub, id, prefix) => `<div class="item"><span class="grow"><b>${esc(title)}</b><span class="meta">${sub}</span></span>${actBtns(id, prefix)}</div>`;
 const addBtn = (act, label) => `<div class="row"><button class="btn" data-act="${act}">${ic('plus', 18)} ${label}</button></div>`;
 
