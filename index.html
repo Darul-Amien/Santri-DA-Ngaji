@@ -281,8 +281,6 @@ h1,h2,h3{font-family:var(--fh);font-weight:700;letter-spacing:-.012em;text-wrap:
 .search .ic{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--mute);pointer-events:none}
 .search input{padding-left:46px;border-radius:99px}
 /* Pemutar audio (listening) */
-.aiq{border:1.5px solid var(--line);border-radius:18px;padding:12px 14px;margin:12px 0}
-.aiq textarea,.aiq input,.aiq select{width:100%}
 .audio{background:var(--paper);border:1px solid var(--line);border-top:5px solid var(--gold);border-radius:24px 24px 20px 20px;padding:20px;box-shadow:var(--shadow);margin:6px 3px 0}
 .audio audio{width:100%;display:block}
 .audio .spd{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
@@ -590,7 +588,6 @@ async function viewMateri(main, mapelId, materiId) {
     <div class="row">
       ${isAudio ? '' : `<button class="btn gold" data-act="full" data-target="viewer">${ic('max', 18)} Layar penuh</button>`}
       <a class="btn" href="#/latihan/${esc(mapelId)}/${esc(materiId)}">${ic('edit', 18)} ${isStaff() ? 'Mulai latihan' : 'Kerjakan latihan'}</a>
-      ${isStaff() && ['slide', 'dokumen'].includes(m.tipe) ? `<button class="btn gold" data-act="ai-soal" data-mid="${esc(materiId)}" data-judul="${esc(m.judul)}">${ic('plus', 18)} Buat soal otomatis</button>` : ''}
       <a class="btn ghost icon" href="${esc(m.url)}" target="_blank" rel="noopener" aria-label="Buka di tab baru" title="Buka di tab baru">${ic('ext', 18)}</a>
     </div>
     <div class="pn">
@@ -748,66 +745,6 @@ function openForm({ title, fields, values = {}, submitLabel = 'Simpan', onSave }
   if (!d.open) d.showModal();
 }
 
-// ---------- Soal otomatis (AI) ----------
-function soalAiForm(materiId, judul) {
-  const d = $('#dlg');
-  S.aiCtx = { materiId, judul };
-  d.oncancel = e => { if (S.aiBusy) e.preventDefault(); };
-  d.innerHTML = `<form id="aif"><h3>Buat soal otomatis</h3>
-    <p class="muted small" style="margin:0 0 6px">Dari materi <b>${esc(judul)}</b>. Soal mengikuti bahasa PDF. Hasilnya draf: periksa dulu sebelum disimpan.</p>
-    <div class="fld"><label for="ai_n">Jumlah soal (1 sampai 15)</label><input id="ai_n" name="jumlah" type="number" min="1" max="15" value="5"></div>
-    <div class="fld"><label for="ai_j">Jenis soal</label><select id="ai_j" name="jenis"><option value="campur">Campuran</option><option value="pg">Pilihan ganda</option><option value="bs">Benar atau salah</option><option value="isian">Isian singkat</option></select></div>
-    <div class="fld"><label for="ai_t">Tingkat</label><select id="ai_t" name="tingkat"><option value="mudah">Mudah</option><option value="sedang" selected>Sedang</option><option value="sulit">Sulit</option></select></div>
-    <div class="fld"><label for="ai_f">Fokus (opsional)</label><input id="ai_f" name="fokus" maxlength="200" placeholder="Contoh: bab Thaharah, atau halaman 5 sampai 12"><small>Untuk hasil terbaik dan biaya hemat, gunakan PDF per bab (sekitar 30 halaman). PDF pindai yang buram bisa menurunkan mutu soal.</small></div>
-    <div class="row end"><button type="button" class="btn ghost" data-close>Batal</button><button class="btn" type="submit">Buat soal</button></div></form>`;
-  const f = $('#aif', d);
-  f.onsubmit = async e => {
-    e.preventDefault();
-    const prm = { materiId, jumlah: +f.jumlah.value, jenis: f.jenis.value, tingkat: f.tingkat.value, fokus: f.fokus.value };
-    d.innerHTML = `<h3>Membuat soal…</h3>${loader}<p class="muted small" style="text-align:center">Membaca PDF dan menyusun soal. Bisa sampai 1 sampai 2 menit. Jangan tutup halaman ini.</p>`;
-    S.aiBusy = true;
-    try { soalAiReview(materiId, judul, await api('soalGenerate', prm)); }
-    catch (err) {
-      d.innerHTML = `<h3>Gagal membuat soal</h3><p class="err" role="alert">${esc(err.message)}</p><div class="row end"><button class="btn ghost" data-close>Tutup</button><button class="btn" data-act="ai-ulang">Coba lagi</button></div>`;
-    } finally { S.aiBusy = false; }
-  };
-  if (!d.open) d.showModal();
-}
-
-function soalAiReview(materiId, judul, r) {
-  const d = $('#dlg'), list = r.soal || [];
-  const card = (q, i) => `<div class="aiq" data-tipe="${esc(q.tipe)}">
-    <label class="chk"><input type="checkbox" class="aiok" checked> <b>Soal ${i + 1}</b> · ${esc(SOAL_LABEL[q.tipe] || q.tipe)}${q.halaman ? ' · hal. ' + esc(q.halaman) : ''}</label>
-    <div class="fld"><label>Pertanyaan</label><textarea class="aip" rows="3" dir="auto">${esc(q.pertanyaan)}</textarea></div>
-    ${q.tipe === 'pg' ? `<div class="fld"><label>Pilihan (satu per baris)</label><textarea class="aio" rows="4" dir="auto">${esc(q.opsi)}</textarea></div>` : ''}
-    <div class="fld"><label>${q.tipe === 'pg' ? 'Nomor pilihan yang benar' : q.tipe === 'bs' ? 'Jawaban benar' : 'Jawaban (pisahkan dengan | bila ada beberapa versi)'}</label>${
-      q.tipe === 'bs' ? `<select class="aij"><option ${q.jawaban === 'Benar' ? 'selected' : ''}>Benar</option><option ${q.jawaban === 'Salah' ? 'selected' : ''}>Salah</option></select>`
-      : `<input class="aij" dir="auto" value="${esc(q.jawaban)}" ${q.tipe === 'pg' ? 'type="number" min="1" max="6"' : ''}>`}</div>
-    <div class="fld"><label>Pembahasan</label><textarea class="aib" rows="2" dir="auto">${esc(q.pembahasan)}</textarea></div></div>`;
-  d.innerHTML = `<h3>Periksa soal</h3>
-    <p class="muted small" style="margin:0 0 4px">Soal ini dibuat otomatis dan bisa keliru. Cocokkan dengan kitab, ubah seperlunya, hilangkan centang pada soal yang tidak dipakai.</p>
-    ${list.map(card).join('')}
-    <div class="row end"><button type="button" class="btn ghost" data-close>Buang semua</button><button type="button" class="btn" id="aisave">Simpan soal terpilih</button></div>`;
-  $('#aisave', d).onclick = async ev => {
-    const items = [...d.querySelectorAll('.aiq')].filter(c => c.querySelector('.aiok').checked).map(c => ({
-      tipe: c.dataset.tipe,
-      pertanyaan: c.querySelector('.aip').value,
-      opsi: c.querySelector('.aio') ? c.querySelector('.aio').value : '',
-      jawaban: c.querySelector('.aij').value,
-      pembahasan: c.querySelector('.aib').value
-    }));
-    if (!items.length) { toast('Pilih minimal satu soal.'); return; }
-    const btn = ev.currentTarget; btn.disabled = true; btn.textContent = 'Menyimpan…';
-    try {
-      const res = await api('latihanSaveBatch', { materiId, items });
-      d.close();
-      toast(res.errors.length ? `${res.saved} soal tersimpan. ${res.errors[0]}` : `${res.saved} soal tersimpan.`);
-      if (/^#\/kelola/.test(location.hash)) route();
-    } catch (err) { toast(err.message); btn.disabled = false; btn.textContent = 'Simpan soal terpilih'; }
-  };
-  d.scrollTop = 0;
-}
-
 // ---------- Donasi (tampil di Beranda untuk alumni, ustadz, admin) ----------
 // Nomor rekening, judul, teks, dan link konfirmasi diatur admin di Kelola > Donasi (tersimpan di sheet "Pengaturan").
 // Gambar QRIS (opsional) tetap berupa file: taruh di folder yang sama dengan index.html lalu isi namanya di bawah.
@@ -953,9 +890,7 @@ async function admLatihan(box) {
   if (!materi.length) { box.innerHTML = html + '<div class="empty">Mapel ini belum punya materi. Tambahkan materi dulu.</div>'; return; }
   html += `<div class="fld"><label for="selt">Materi</label><select id="selt" data-change="adm-materi">${materi.map(m => `<option value="${esc(m.id)}" ${m.id === S.adm.materiId ? 'selected' : ''}>${esc(m.judul)}</option>`).join('')}</select></div>`;
   const list = await api('latihanList', { materiId: S.adm.materiId }); S.adm.latihan = list;
-  const mt = materi.find(m => m.id === S.adm.materiId);
-  const aiBtn = mt && ['slide', 'dokumen'].includes(mt.tipe) ? `<div class="row"><button class="btn gold" data-act="ai-soal" data-mid="${esc(mt.id)}" data-judul="${esc(mt.judul)}">${ic('plus', 18)} Buat soal otomatis</button></div>` : '';
-  box.innerHTML = html + aiBtn + addBtn('latihan-add', 'Tambah soal') +
+  box.innerHTML = html + addBtn('latihan-add', 'Tambah soal') +
     (list.length ? `<div class="rows">${list.map((q, i) => rowItem(`${i + 1}. ${q.pertanyaan.length > 90 ? q.pertanyaan.slice(0, 90) + '…' : q.pertanyaan}`, `<span class="badge">${SOAL_LABEL[q.tipe] || q.tipe}</span>`, q.id, 'latihan')).join('')}</div>` : '<div class="empty">Belum ada soal untuk materi ini.</div>');
 }
 function latihanForm(q = {}) {
@@ -1086,7 +1021,7 @@ async function del(label, action, params) {
   if (!confirm(label)) return;
   try { await api(action, params); toast('Dihapus.'); route(); } catch (e) { toast(e.message); }
 }
-const closeDlg = () => { const d = $('#dlg'); if (S.aiBusy) return; if (d.open) d.close(); };
+const closeDlg = () => { const d = $('#dlg'); if (d.open) d.close(); };
 const H = {
   home() { closeDlg(); if (!location.hash || location.hash === '#/') route(); else location.hash = '#/'; },
   admin() { closeDlg(); if (location.hash === '#/kelola/mapel') route(); else location.hash = '#/kelola/mapel'; },
@@ -1098,8 +1033,6 @@ const H = {
   delme() { deleteMeForm(); },
   kelasfilter(el) { S.kelasFilter = el.dataset.v; window._drawHome && window._drawHome(); },
   full(el) { toggleFull($('#' + el.dataset.target)); },
-  'ai-soal'(el) { soalAiForm(el.dataset.mid, el.dataset.judul); },
-  'ai-ulang'() { if (S.aiCtx) soalAiForm(S.aiCtx.materiId, S.aiCtx.judul); },
   speed(el) { const a = $('#aplayer'); if (!a) return; a.playbackRate = +el.dataset.v; el.parentNode.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === el)); },
   pick(el) { rPick(+el.dataset.i); }, check() { rCheck(); }, reveal() { rReveal(); },
   next() { rNext(); }, prev() { rPrev(); }, restart() { rRestart(); },
