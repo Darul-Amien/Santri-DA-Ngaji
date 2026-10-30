@@ -359,7 +359,22 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2800);
 }
 
+// Cache baca di sisi klien: data yang sama dipakai ulang selama 60 detik, dan setiap aksi tulis menghapus seluruh cache.
+const CACHE_READ = new Set(['mapelList', 'materiList', 'latihanList']);
+const AC = new Map(), AC_TTL = 60000;
 async function api(action, params = {}) {
+  if (CACHE_READ.has(action)) {
+    const key = action + '|' + JSON.stringify(params), hit = AC.get(key);
+    if (hit && Date.now() - hit.t < AC_TTL) return hit.p;
+    const p = apiRaw(action, params);
+    AC.set(key, { t: Date.now(), p });
+    p.catch(() => AC.delete(key));
+    return p;
+  }
+  if (action === 'me') return apiRaw(action, params);
+  try { return await apiRaw(action, params); } finally { AC.clear(); }
+}
+async function apiRaw(action, params = {}) {
   if (!API_URL || API_URL.startsWith('GANTI')) throw new Error('API_URL belum diisi di index.html. Tempel URL Web App Apps Script.');
   let r;
   try {
@@ -421,6 +436,7 @@ async function doLogin(f) {
 }
 
 function doLogout(expired) {
+  AC.clear();
   if (S.token && !expired) api('logout').catch(() => {});
   S.token = null; S.user = null; ls('del', 'lms_token');
   renderLogin(expired ? 'Sesi habis. Silakan masuk lagi.' : '');
@@ -484,14 +500,37 @@ async function viewHome(main) {
         : `<div class="empty">${isStaff() ? '<b>Belum ada mata pelajaran.</b>Buka Kelola, lalu tab Mapel untuk menambahkannya.' : '<b>Belum ada mata pelajaran untuk kelasmu.</b>Hubungi ustadz atau admin.'}</div>`);
   };
   window._drawHome = draw; draw();
+  syncImages(mapel, true).then(ch => { if (ch && $('#hhome')) draw(); }).catch(() => {});
   const cari = $('#cari');
   if (cari) cari.oninput = e => { S.cari = e.target.value; draw(); };
 }
 
 // ---------- Gambar kitab (ikon mapel) ----------
 const okImg = g => /^data:image\/(jpeg|png|webp);base64,/.test(g || '');
+// Gambar tidak ikut daftar mapel. Disimpan di memori dan localStorage, diunduh hanya bila baru/berubah (dicek lewat 'gv').
+const IMG = {}, IMGV = {};
+(function () {
+  try { const o = JSON.parse(ls('get', 'lms_img') || '{}'); for (const id in o) if (okImg(o[id].g)) { IMG[id] = o[id].g; IMGV[id] = o[id].v; } } catch (e) {}
+})();
+function saveImgCache() {
+  try { const o = {}; for (const id in IMG) o[id] = { v: IMGV[id], g: IMG[id] }; localStorage.setItem('lms_img', JSON.stringify(o)); } catch (e) {}
+}
+async function syncImages(list, prune) {
+  let changed = false;
+  list.forEach(m => { if (!m.gv && IMG[m.id]) { delete IMG[m.id]; delete IMGV[m.id]; changed = true; } });
+  if (prune) { const ids = new Set(list.map(m => m.id)); Object.keys(IMG).forEach(id => { if (!ids.has(id)) { delete IMG[id]; delete IMGV[id]; changed = true; } }); }
+  const need = list.filter(m => m.gv && IMGV[m.id] !== m.gv);
+  const chunks = []; for (let i = 0; i < need.length; i += 15) chunks.push(need.slice(i, i + 15));
+  await Promise.all(chunks.map(async ch => {
+    const r = await apiRaw('mapelGambar', { ids: ch.map(m => m.id) });
+    ch.forEach(m => { if (okImg(r[m.id])) { IMG[m.id] = r[m.id]; IMGV[m.id] = m.gv; changed = true; } });
+  }));
+  if (changed) saveImgCache();
+  return changed;
+}
 function icImg(m, size) {
-  return okImg(m.gambar) ? `<img class="t-img" src="${esc(m.gambar)}" alt="" loading="lazy">` : ic('book', size);
+  const g = IMG[m.id];
+  return okImg(g) ? `<img class="t-img" src="${esc(g)}" alt="" loading="lazy">` : ic('book', size);
 }
 function resizeImage(file, max = 360) {
   return new Promise((res, rej) => {
@@ -517,13 +556,17 @@ async function viewMapel(main, id) {
   if (!mp) throw new Error('Mata pelajaran tidak ditemukan.');
   const p = palFor(mp.nama);
   main.innerHTML = `<a class="back" href="#/">${ic('left', 18)} Beranda</a>
-    <section class="banner" style="--c1:${p[0]};--c2:${p[1]}"><span class="t-ic">${icImg(mp, 26)}</span>
+    <section class="banner" data-mid="${esc(mp.id)}" style="--c1:${p[0]};--c2:${p[1]}"><span class="t-ic">${icImg(mp, 26)}</span>
       <div><h2>${esc(mp.nama)}</h2><span class="t-badge">${esc(mp.kelas ? 'Kelas ' + mp.kelas : 'Semua kelas')}</span><span class="t-badge">${materi.length} materi</span></div></section>
     <div class="sec">Daftar materi</div>
     ${materi.length ? `<div class="rows">${materi.map((m, i) => {
       const t = TIPE_LABEL[m.tipe] || TIPE_LABEL.dokumen;
       return `<a class="item" href="#/materi/${esc(id)}/${esc(m.id)}"><span class="num">${i + 1}</span><span class="grow"><b>${esc(m.judul)}</b><span class="meta">${ic(t[0], 15)}${t[1]}${m.aktif ? '' : '<span class="badge gold">Disembunyikan</span>'}</span></span><span class="chev">${ic('right', 20)}</span></a>`;
     }).join('')}</div>` : `<div class="empty">Belum ada materi untuk mata pelajaran ini.</div>`}`;
+  syncImages([mp]).then(ch => {
+    const b = $('.banner');
+    if (ch && b && b.dataset.mid === mp.id) b.querySelector('.t-ic').innerHTML = icImg(mp, 26);
+  }).catch(() => {});
 }
 
 // ---------- Materi ----------
@@ -792,7 +835,9 @@ async function admMapel(box) {
   box.innerHTML = addBtn('mapel-add', 'Tambah mapel') +
     (list.length ? `<div class="rows">${list.map(m => rowItem(m.nama, `<span class="badge">${esc(m.kelas ? 'Kelas ' + m.kelas : 'Semua kelas')}</span>Urutan ${m.urutan}`, m.id, 'mapel')).join('')}</div>` : '<div class="empty">Belum ada mapel. Tambahkan mapel pertama.</div>');
 }
-function mapelForm(m = {}) {
+async function mapelForm(m = {}) {
+  if (m.id && m.gv && IMGV[m.id] !== m.gv) { try { await syncImages([m]); } catch (e) {} }
+  const g0 = IMG[m.id] || '';
   openForm({
     title: m.id ? 'Ubah mata pelajaran' : 'Tambah mata pelajaran',
     fields: [
@@ -801,8 +846,8 @@ function mapelForm(m = {}) {
       { name: 'urutan', label: 'Urutan tampil', type: 'number' },
       { name: 'gambar', label: 'Foto kitab (ikon)', type: 'image', hint: 'Opsional. Foto otomatis dikecilkan. Kosongkan untuk ikon buku bawaan.' }
     ],
-    values: m,
-    onSave: v => api('mapelSave', { id: m.id, nama: v.nama, kelas: v.kelas, urutan: v.urutan, gambar: v.gambar })
+    values: Object.assign({}, m, { gambar: g0 }),
+    onSave: v => api('mapelSave', { id: m.id, nama: v.nama, kelas: v.kelas, urutan: v.urutan, gambar: v.gambar !== g0 ? v.gambar : undefined })
   });
 }
 
