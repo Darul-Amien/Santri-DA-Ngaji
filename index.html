@@ -408,6 +408,8 @@ function embedUrl(u) {
 }
 
 // ---------- Masuk / keluar ----------
+// Alamat tetap aplikasi untuk tombol "Copy Link untuk Laptop". Kosongkan ('') untuk memakai alamat halaman yang sedang dibuka.
+const LINK_LAPTOP = '';
 const REGISTRASI = true; // samakan dengan REGISTRASI_TERBUKA di code.gs
 function renderLogin(msg) {
   $('#app').innerHTML = `<div class="login"><div class="lcard">
@@ -422,6 +424,7 @@ function renderLogin(msg) {
       ${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ''}
       <button class="btn" style="width:100%;margin-top:14px">Masuk</button>
       ${REGISTRASI ? `<button type="button" class="btn ghost" style="width:100%;margin-top:10px" data-act="register">Daftar akun baru</button>` : ''}
+      <button type="button" class="btn ghost" style="width:100%;margin-top:10px" data-act="copylink">Copy Link untuk Laptop</button>
       <p class="muted small" style="text-align:center;margin:12px 0 0">Lupa PIN? Minta ustadz atau admin untuk mengatur ulang.</p>
     </form></div></div>`;
 }
@@ -1030,6 +1033,12 @@ const H = {
   copy(el) { const v = el.dataset.v; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('Nomor rekening disalin.'), () => toast('Salin manual: ' + v)); },
   pin() { pinForm(); },
   register() { registerForm(); },
+  copylink() {
+    const v = LINK_LAPTOP || (location.origin + location.pathname);
+    const ok = () => toast('Link disalin. Tempel di browser laptop.');
+    const fb = () => { try { const t = document.createElement('textarea'); t.value = v; t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select(); const r = document.execCommand('copy'); t.remove(); r ? ok() : toast('Salin manual: ' + v); } catch (e) { toast('Salin manual: ' + v); } };
+    (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(ok, fb);
+  },
   delme() { deleteMeForm(); },
   kelasfilter(el) { S.kelasFilter = el.dataset.v; window._drawHome && window._drawHome(); },
   full(el) { toggleFull($('#' + el.dataset.target)); },
