@@ -408,8 +408,6 @@ function embedUrl(u) {
 }
 
 // ---------- Masuk / keluar ----------
-// Alamat tetap aplikasi untuk tombol "Copy Link untuk Laptop". Kosongkan ('') untuk memakai alamat halaman yang sedang dibuka.
-const LINK_LAPTOP = '';
 const REGISTRASI = true; // samakan dengan REGISTRASI_TERBUKA di code.gs
 function renderLogin(msg) {
   $('#app').innerHTML = `<div class="login"><div class="lcard">
@@ -424,7 +422,6 @@ function renderLogin(msg) {
       ${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ''}
       <button class="btn" style="width:100%;margin-top:14px">Masuk</button>
       ${REGISTRASI ? `<button type="button" class="btn ghost" style="width:100%;margin-top:10px" data-act="register">Daftar akun baru</button>` : ''}
-      <button type="button" class="btn ghost" style="width:100%;margin-top:10px" data-act="copylink">Copy Link untuk Laptop</button>
       <p class="muted small" style="text-align:center;margin:12px 0 0">Lupa PIN? Minta ustadz atau admin untuk mengatur ulang.</p>
     </form></div></div>`;
 }
@@ -614,19 +611,40 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 // ---------- Latihan ----------
+// Acak urutan soal (Fisher-Yates), mengembalikan salinan baru
+function shuffleArr(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+// Acak urutan pilihan jawaban soal pilihan ganda; kunci jawaban ikut menyesuaikan.
+// Mengembalikan salinan soal (data asli/cache tidak diubah).
+function shuffleOpts(q) {
+  if (q.tipe !== 'pg') return q;
+  const opts = String(q.opsi || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const ci = Number(q.jawaban) - 1;
+  if (opts.length < 2 || !(ci >= 0 && ci < opts.length)) return q; // data tidak valid: biarkan
+  const idx = shuffleArr(opts.map((_, k) => k));
+  return { ...q, _opts: idx.map(k => opts[k]), _ci: idx.indexOf(ci) };
+}
+// Acak soal sekaligus pilihan jawabannya
+function shuffleQuestions(items) { return shuffleArr(items).map(shuffleOpts); }
 async function viewLatihan(main, mapelId, materiId) {
   const [items, list] = await Promise.all([api('latihanList', { materiId }), api('materiList', { mapelId })]);
   const mat = list.find(x => x.id === materiId);
-  R = { items, i: 0, score: 0, pres: isStaff(), answered: false, shown: false, ok: false, pick: null, text: '', done: false, mapelId, materiId, mat };
+  R = { items: shuffleQuestions(items), i: 0, score: 0, pres: isStaff(), answered: false, shown: false, ok: false, pick: null, text: '', done: false, mapelId, materiId, mat };
   main.innerHTML = `<a class="back" href="#/materi/${esc(mapelId)}/${esc(materiId)}">${ic('left', 18)} Kembali ke materi</a>
     <div id="runner" class="runner ${R.pres ? 'pres' : ''}"></div>`;
   drawRunner();
 }
 
 function qInfo(q) {
-  const opts = q.tipe === 'bs' ? ['Benar', 'Salah'] : q.tipe === 'pg' ? String(q.opsi || '').split('\n').map(s => s.trim()).filter(Boolean) : [];
+  const opts = q.tipe === 'bs' ? ['Benar', 'Salah'] : q.tipe === 'pg' ? (q._opts || String(q.opsi || '').split('\n').map(s => s.trim()).filter(Boolean)) : [];
   let ci = -1;
-  if (q.tipe === 'pg') ci = Number(q.jawaban) - 1;
+  if (q.tipe === 'pg') ci = q._ci !== undefined ? q._ci : Number(q.jawaban) - 1;
   else if (q.tipe === 'bs') ci = norm(q.jawaban) === 'benar' ? 0 : 1;
   return { opts, ci };
 }
@@ -694,7 +712,7 @@ function rNext() {
   drawRunner();
 }
 function rPrev() { if (R && R.i > 0 && !R.done) { R.i--; rReset(); drawRunner(); } }
-function rRestart() { R.i = 0; R.score = 0; R.done = false; rReset(); drawRunner(); }
+function rRestart() { R.items = shuffleQuestions(R.items); R.i = 0; R.score = 0; R.done = false; rReset(); drawRunner(); }
 
 document.addEventListener('keydown', e => {
   if (!R || !$('#runner') || R.done || !R.items.length) return;
@@ -1033,12 +1051,6 @@ const H = {
   copy(el) { const v = el.dataset.v; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('Nomor rekening disalin.'), () => toast('Salin manual: ' + v)); },
   pin() { pinForm(); },
   register() { registerForm(); },
-  copylink() {
-    const v = LINK_LAPTOP || (location.origin + location.pathname);
-    const ok = () => toast('Link disalin. Tempel di browser laptop.');
-    const fb = () => { try { const t = document.createElement('textarea'); t.value = v; t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select(); const r = document.execCommand('copy'); t.remove(); r ? ok() : toast('Salin manual: ' + v); } catch (e) { toast('Salin manual: ' + v); } };
-    (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(ok, fb);
-  },
   delme() { deleteMeForm(); },
   kelasfilter(el) { S.kelasFilter = el.dataset.v; window._drawHome && window._drawHome(); },
   full(el) { toggleFull($('#' + el.dataset.target)); },
